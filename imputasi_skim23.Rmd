@@ -1,0 +1,160 @@
+---
+title: "Imputasi SKIM23"
+author: "Ayu Paramudita"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(dplyr)
+library(knitr)
+```
+
+
+## Load data
+
+```{r, warning=FALSE}
+dpa23   <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA NASIONAL tahun 2023.xlsx")
+skim23  <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/SKIM.IIADetail NASIONAL tahun 2024.xlsx")
+
+stpim23 <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/STPIM (CAWI) NASIONAL tahun 2024.xlsx")
+weight23 <- read.csv2("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/2024-12-23 10_02_52 Weight STPIM 2024(Sheet1).csv")
+
+```
+
+
+## Data DPA23 TPT
+
+```{r }
+dpa23_tpt <- dpa23 |>
+  mutate(kbli2 = substr(b2r217, 1, 2)) |>
+  filter(b2r205 == 1,                            # kondisi aktif
+         b2r210 != 4,                            # bukan kantor pusat
+         kbli2  == 13 | kbli2 == 14              # kbli 13 dan 14
+         ) |>
+  select(kip, prov, kbli2, b2r205, b2r210)
+
+# Buat tabel
+tab_dpa23tpt <- table(dpa23_tpt$kbli2)
+tab_dpa23tpt <- as.data.frame(tab_dpa23tpt) |>
+  rename(KBLI = Var1,
+         N    = Freq) 
+
+total_dpatpt23 <- data.frame(KBLI = "Total", N = sum(tab_dpa23tpt$N))
+tab_dpa23tpt <- rbind(tab_dpa23tpt, total_dpatpt23)
+tab_dpa23tpt <- kable(tab_dpa23tpt)
+
+```
+
+Referensi target usaha: DPA23 kondisi 1 (aktif), KBLI 13-14, dan selain kantor pusat.
+
+Jumlah target usaha TPT (KBLI 13 & 14) menurut DPA23: **`r nrow(dpa23_tpt)`**. 
+
+Dengan rincian sebagai berikut: `r tab_dpa23tpt`.
+
+
+## Cek SKIM23
+
+```{r }
+skim23 <- skim23 |>
+  mutate(kbli2 = substr(r201_kode, 1, 2))
+
+# Buat tabel
+tab_skim23 <- table(skim23$kbli2)
+tab_skim23 <- as.data.frame(tab_skim23) |>
+  rename(KBLI = Var1,
+         N    = Freq) 
+
+total_skim23 <- data.frame(KBLI = "Total", N = sum(tab_skim23$N))
+tab_skim23 <- rbind(tab_skim23, total_skim23)
+tab_skim23 <- kable(tab_skim23)
+
+nkbli_na <- sum(is.na(skim23$kbli2))   
+
+```
+
+Jumlah perusahaan TPT di SKIM23 : **`r nrow(skim23)`**
+
+`r tab_skim23`
+
+**KBLI yang NA : `r nkbli_na`**
+
+
+## Target usaha SKIM yang perlu imputasi dengan dasar DPA23 TPT
+
+```{r }
+target_imptpt <- dpa23_tpt |>
+  filter(!(kip %in% skim23$kip))
+
+```
+
+**Target imputasi TPT: `r nrow(target_imptpt)`.**
+
+
+## Cek DPA23 TPT dengan weight
+```{r}
+# Cek irisan DPA23 TPT dan weight
+cek_dpa23tpt_weight <- dpa23_tpt |>
+  filter((kip %in% weight23$kipb))
+
+```
+
+Tidak ada irisan DPA23 TPT dengan weight: aman.
+Sehingga, target imputasi TPT tetap **`r nrow(target_imptpt)`**.
+
+
+## Cek STPIM23 TPT dan weight
+
+```{r, results='hide'}
+# Cek usaha TPT di STPIM23
+stpim23_tpt <- stpim23 |>
+  mutate(kbli2 = substr(r201_kode, 1, 2)) |>
+  filter(kbli2 == 13 | kbli2 == 14)
+
+list_stpim23_tpt <- print(stpim23_tpt$kip)
+
+total_tpt23 <- nrow(stpim23_tpt) + nrow(target_imptpt) + nrow(skim23)
+```
+
+Ternyata masih ada usaha TPT yang dicatat di STPIM23. 
+Apakah `r nrow(stpim23_tpt)` usaha 13-14 STPIM23 ini ada di weight?
+
+```{r}
+# Cek irisan STPIM23 dan weight
+cek_stpim23tpt_weight <- stpim23_tpt |>
+  filter((kip %in% weight23$kipb))
+
+```
+
+Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, weight harus diupdate dengan mengeluarkan 3 usaha 13-14 ini. KIP `r nrow(cek_stpim23tpt_weight)` perusahaan tersebut a.l.: `r cek_stpim23tpt_weight$kip`.
+
+**`r nrow(stpim23_tpt)` usaha 13-14 STPIM23 harus masuk menjadi cakupan SKIM23**. *Jangan lupa untuk dimasukkan saat mengkompilasi data SKIM23 untuk tabulasi nanti*. KIP `r nrow(stpim23_tpt)` perusahaan tersebut a.l.:
+
+`r list_stpim23_tpt`
+
+**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (STPIM23 TPT + Target Imputasi + SKIM23).
+
+## IMPUTASI
+
+
+```{r }
+
+target_imptpt
+
+## variabel imputasi?
+## model apa imputasi? rasio? ml?
+## tk : historis 22
+## pengeluaran pekerja : historis 22
+## total output : rasio/ml?
+## breakdown output : rasio komponen?
+## biaya input?
+
+```
+
+
