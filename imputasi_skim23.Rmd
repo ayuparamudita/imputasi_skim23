@@ -17,6 +17,8 @@ library(knitr)
 ```
 
 
+# Investigasi target imputasi
+
 ## Load data
 
 ```{r, warning=FALSE}
@@ -86,7 +88,7 @@ Jumlah perusahaan TPT di SKIM23 : **`r nrow(skim23)`**
 **KBLI yang NA : `r nkbli_na`**
 
 
-## Target usaha SKIM yang perlu imputasi dengan dasar DPA23 TPT
+## Target usaha SKIM yang perlu imputasi dengan dasar jumlah usaha dari DPA23 TPT
 
 ```{r }
 target_imptpt <- dpa23_tpt |>
@@ -97,19 +99,22 @@ target_imptpt <- dpa23_tpt |>
 **Target imputasi TPT: `r nrow(target_imptpt)`.**
 
 
-## Cek DPA23 TPT dengan weight
+## Cek DPA23 TPT dengan weight STPIM23
+
+Catatan: weight STPIM23 adalah dokumen berisi list KIP usaha STPIM23 dan penimbangnya.
+
 ```{r}
-# Cek irisan DPA23 TPT dan weight
+# Cek irisan DPA23 TPT dan weight STPIM23
 cek_dpa23tpt_weight <- dpa23_tpt |>
   filter((kip %in% weight23$kipb))
 
 ```
 
 Tidak ada irisan DPA23 TPT dengan weight: aman.
-Sehingga, target imputasi TPT tetap **`r nrow(target_imptpt)`**.
+Sehingga, target imputasi TPT **`r nrow(target_imptpt)`**.
 
 
-## Cek STPIM23 TPT dan weight
+## Cek STPIM23 TPT dan weight STPIM23
 
 ```{r, results='hide'}
 # Cek usaha TPT di STPIM23
@@ -122,7 +127,7 @@ list_stpim23_tpt <- print(stpim23_tpt$kip)
 total_tpt23 <- nrow(stpim23_tpt) + nrow(target_imptpt) + nrow(skim23)
 ```
 
-Ternyata masih ada usaha TPT yang dicatat di STPIM23. 
+Ternyata masih ada `r nrow(stpim23_tpt)` usaha TPT yang dicatat di STPIM23. 
 Apakah `r nrow(stpim23_tpt)` usaha 13-14 STPIM23 ini ada di weight?
 
 ```{r}
@@ -132,18 +137,72 @@ cek_stpim23tpt_weight <- stpim23_tpt |>
 
 ```
 
-Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, weight harus diupdate dengan mengeluarkan 3 usaha 13-14 ini. KIP `r nrow(cek_stpim23tpt_weight)` perusahaan tersebut a.l.: `r cek_stpim23tpt_weight$kip`.
+Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, dokumen weight harus diupdate dengan mengeluarkan 3 usaha 13-14 ini. KIP `r nrow(cek_stpim23tpt_weight)` perusahaan tersebut a.l.: `r cek_stpim23tpt_weight$kip`.
 
 **`r nrow(stpim23_tpt)` usaha 13-14 STPIM23 harus masuk menjadi cakupan SKIM23**. *Jangan lupa untuk dimasukkan saat mengkompilasi data SKIM23 untuk tabulasi nanti*. KIP `r nrow(stpim23_tpt)` perusahaan tersebut a.l.:
 
 `r list_stpim23_tpt`
 
-**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (STPIM23 TPT + Target Imputasi + SKIM23).
+**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
 
-## IMPUTASI
 
+# IMPUTASI
+
+## Load data sumber imputasi
+
+```{r, warning=FALSE}
+stpim22 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg22.xlsx")
+stpim21 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx")
+stpim20 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg20f.xlsx")
+
+stpim22 <- stpim22 |>
+  mutate(kbli2 = substr(Disic522, 1, 2))
+```
+
+## Cek irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20
+
+Cek irisan ini bertujuan untuk mendapatkan basis data dari data historis masing-masing KIP yang ingin diimputasi.
 
 ```{r }
+# irisan target imputasi dengan stpim22
+stpim22_imptpt <- stpim22 |>
+  filter(Kipb %in% target_imptpt$kip) 
+
+# sisa target imputasi & tambahan informasi variabel tk, inves, omset dari dpa23
+sisa_target22 <- target_imptpt |>
+  filter(!(kip %in% stpim22_imptpt$Kipb)) |>
+  left_join(dpa23, by = "kip") |>
+  select(kip, prov.x, kbli2, b2r205.x, b2r210.x, b2r224, b2r225, b2r226) |>
+  rename(prov = prov.x,
+         b2r205 = b2r205.x,
+         b2r210 = b2r210.x)
+
+# irisan target imputasi dengan stpim21
+stpim21_imptpt <- stpim21 |>
+  filter(Kipb %in% sisa_target22$kip)
+
+# sisa target imputasi 
+sisa_target21 <- sisa_target22 |>
+  filter(!(kip %in% stpim21_imptpt$Kipb))
+
+# irisan target imputasi dengan stpim20
+stpim20_imptpt <- stpim20 |>
+  filter(Kipb %in% sisa_target21$kip)
+
+# sisa target imputasi 
+sisa_target20 <- sisa_target21 |>
+  filter(!(kip %in% stpim20_imptpt$Kipb))
+
+```
+
+Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21, `r nrow(stpim20_imptpt)` dari STPIM20**, sisanya `r nrow(sisa_target20)` KIP tidak ditemukan di STPIM20-22.
+
+**`r nrow(sisa_target20)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
+
+```{r }
+
+#kelompokkan basis data historis 2020-2022 >> mapping variabel apa yang diperlukan: kipb, dprovi, dkabup, disic5, rincian tk, rincian output, rincian input.
+#imputasi tk untuk sisanya
 
 target_imptpt
 
