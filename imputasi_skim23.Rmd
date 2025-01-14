@@ -185,23 +185,50 @@ stpim21_imptpt <- stpim21 |>
 sisa_target21 <- sisa_target22 |>
   filter(!(kip %in% stpim21_imptpt$Kipb))
 
-# irisan target imputasi dengan stpim20
-stpim20_imptpt <- stpim20 |>
-  filter(Kipb %in% sisa_target21$kip)
-
-# sisa target imputasi 
-sisa_target20 <- sisa_target21 |>
-  filter(!(kip %in% stpim20_imptpt$Kipb))
-
 ```
 
-Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21, `r nrow(stpim20_imptpt)` dari STPIM20**, sisanya `r nrow(sisa_target20)` KIP tidak ditemukan di STPIM20-22.
+Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang nonrespon di STPIM20.
 
-**`r nrow(sisa_target20)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
+**`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
 
 ```{r }
+#menghapus tahun di nama variabel
+stpim22_imptpt <- stpim22_imptpt |>
+  rename_with(~ gsub("22$", "", .))
 
-#kelompokkan basis data historis 2020-2022 >> mapping variabel apa yang diperlukan: kipb, dprovi, dkabup, disic5, rincian tk, rincian output, rincian input.
+stpim21_imptpt <- stpim21_imptpt |>
+  rename_with(~ gsub("21$", "", .))
+
+
+var22 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
+  "Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon", #tk_laki
+  "Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon", #tk_perem
+  "Lprnop", "Lprnon", #tk_prod
+  "Lnpnop", "Lnpnon", #tk_lain
+  "Ltlnof", #tk_asing
+  "Zpdvcu", #pengpek_prod
+  "Zndvcu" #pengpek_lain
+  )
+
+var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
+           "Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", "Pttlpi", "Pttlpa", "Pttlni", "Pttlna",   #tk_laki
+           "Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", "Pttppi", "Pttppa", "Pttpni", "Pttpna",   #tk_perem 
+           "Ptdpri", "Ptdpra", "Ptdnpi", "Ptdnpa", #tk_takdibayar (dimasukkan ke tk_perem saja)
+           "Lprnol", "Lprnof", #tk_prod
+           "Lnpnol", "Lnpnof", #tk_lain
+           "Lprnof", "Lnpnof", #tk_asing
+           "Zpdvcu", #pengpek_prod
+           "Zndvcu" #pengpek_lain
+           )
+  
+stpim22_imptpt_var <- stpim22_imptpt |>
+  select(all_of(var22))
+
+stpim21_imptpt_var <- stpim21_imptpt |>
+  select(all_of(var21))
+
+
+#kelompokkan basis data historis 2020-2022 >> mapping variabel apa yang diperlukan: kipb, dprovi, dkabup, disic5, rincian tk, pengeluaran pekerja, rincian output, rincian input.
 #imputasi tk untuk sisanya
 
 target_imptpt
