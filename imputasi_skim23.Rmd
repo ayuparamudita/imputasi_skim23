@@ -187,7 +187,7 @@ sisa_target21 <- sisa_target22 |>
 
 ```
 
-Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang nonrespon di STPIM20.
+Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21**, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang nonrespon di STPIM20.
 
 **`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
 
