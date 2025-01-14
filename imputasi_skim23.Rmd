@@ -222,7 +222,7 @@ var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
            )
   
 stpim22_imptpt_var <- stpim22_imptpt |>
-  select(all_of(var22))
+  select(all_of(var22)) 
 
 stpim21_imptpt_var <- stpim21_imptpt |>
   select(all_of(var21))
