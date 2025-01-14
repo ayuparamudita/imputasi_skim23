@@ -5,6 +5,7 @@ output:
   html_document:
     toc: true
     toc_depth: 2
+code-fold: true
 date: "`r Sys.Date()`"
 ---
 
@@ -35,15 +36,15 @@ weight23 <- read.csv2("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/2024-12-23 10_02_52 
 
 ```{r }
 dpa23_tpt <- dpa23 |>
-  mutate(kbli2 = substr(b2r217, 1, 2)) |>
+  mutate(kbli2_dpa23 = substr(b2r217, 1, 2)) |>
   filter(b2r205 == 1,                            # kondisi aktif
          b2r210 != 4,                            # bukan kantor pusat
-         kbli2  == 13 | kbli2 == 14              # kbli 13 dan 14
+         kbli2_dpa23 == 13 | kbli2_dpa23 == 14              # kbli 13 dan 14
          ) |>
-  select(kip, prov, kbli2, b2r205, b2r210)
+  select(kip, prov, kab, b2r217, kbli2_dpa23, b2r205, b2r210, b2r224, b2r225, b2r226, b2r218)
 
 # Buat tabel
-tab_dpa23tpt <- table(dpa23_tpt$kbli2)
+tab_dpa23tpt <- table(dpa23_tpt$kbli2_dpa23)
 tab_dpa23tpt <- as.data.frame(tab_dpa23tpt) |>
   rename(KBLI = Var1,
          N    = Freq) 
@@ -54,7 +55,7 @@ tab_dpa23tpt <- kable(tab_dpa23tpt)
 
 ```
 
-Referensi target usaha: DPA23 kondisi 1 (aktif), KBLI 13-14, dan selain kantor pusat.
+Referensi **target usaha awal**: DPA23 kondisi 1 (aktif), KBLI 13-14, dan selain kantor pusat. *Kenapa **target usaha awal**? Karena nanti di akhir setelah imputasi akan dicek kembali (range tenaga kerja, investasi, omset, badan usaha/hukum, dll dari DPA23) mana yang layak masuk sebagai mfg/data final.*
 
 Jumlah target usaha TPT (KBLI 13 & 14) menurut DPA23: **`r nrow(dpa23_tpt)`**. 
 
@@ -153,10 +154,10 @@ Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, dokume
 ```{r, warning=FALSE}
 stpim22 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg22.xlsx")
 stpim21 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx")
-stpim20 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg20f.xlsx")
+#stpim20 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg20f.xlsx")
 
 stpim22 <- stpim22 |>
-  mutate(kbli2 = substr(Disic522, 1, 2))
+  mutate(kbli2_stpim = substr(Disic522, 1, 2))
 ```
 
 ## Cek irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20
@@ -172,10 +173,16 @@ stpim22_imptpt <- stpim22 |>
 sisa_target22 <- target_imptpt |>
   filter(!(kip %in% stpim22_imptpt$Kipb)) |>
   left_join(dpa23, by = "kip") |>
-  select(kip, prov.x, kbli2, b2r205.x, b2r210.x, b2r224, b2r225, b2r226) |>
+  select(kip, prov.x, kab.x, b2r217.x, kbli2_dpa23, b2r205.x, b2r210.x, b2r224.x, b2r225.x, b2r226.x, b2r218.x) |>
   rename(prov = prov.x,
+         kab  = kab.x,
+         b2r217 = b2r217.x,
          b2r205 = b2r205.x,
-         b2r210 = b2r210.x)
+         b2r210 = b2r210.x,
+         b2r224 = b2r224.x,
+         b2r225 = b2r225.x,
+         b2r226 = b2r226.x,
+         b2r218 = b2r218.x)
 
 # irisan target imputasi dengan stpim21
 stpim21_imptpt <- stpim21 |>
@@ -187,9 +194,16 @@ sisa_target21 <- sisa_target22 |>
 
 ```
 
-Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21**, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang nonrespon di STPIM20.
+Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21**, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang semuanya nonrespon di STPIM20.
 
 **`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
+
+## Mapping variabel STPIM21 dan STPIM22 ke SKIM23
+
+Langkah-langkah yang dilakukan di tahap ini:
+
+- Mapping nama variabel STPIM21, STPIM22, SKIM23.
+- Mensinkronkan variabel STPIM21 dan STPIM22 sesuai dengan SKIM23.
 
 ```{r }
 #menghapus tahun di nama variabel
@@ -199,13 +213,15 @@ stpim22_imptpt <- stpim22_imptpt |>
 stpim21_imptpt <- stpim21_imptpt |>
   rename_with(~ gsub("21$", "", .))
 
-
+# Mapping nama variabel
 var22 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
   "Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon", #tk_laki
   "Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon", #tk_perem
   "Lprnop", "Lprnon", #tk_prod
   "Lnpnop", "Lnpnon", #tk_lain
   "Ltlnof", #tk_asing
+  "Zptvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+  "Zntvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
   "Zpdvcu", #pengpek_prod
   "Zndvcu" #pengpek_lain
   )
@@ -217,21 +233,136 @@ var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
            "Lprnol", "Lprnof", #tk_prod
            "Lnpnol", "Lnpnof", #tk_lain
            "Lprnof", "Lnpnof", #tk_asing
+           "Zptvcu", "Zpevcu", "Zphvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+           "Zntvcu", "Znevcu", "Znhvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
            "Zpdvcu", #pengpek_prod
            "Zndvcu" #pengpek_lain
            )
 
+varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2r217",
+               "r206b_1", #tk_laki
+               "r206b_2", #tk_perem
+               "r206c_1", #tk_prod
+               "r206c_2", #tk_lain
+               "r206d", #tk_asing
+               "r206a", #total_tk
+               "r301a_1", "r301a_2", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+               "r301b_1", "r301b_2", #pengpek_lain = upah_tklain + pengpeklain_tklain
+               "r301c" #total_upah
+               )
 
-stpim22_imptpt_var <- stpim22_imptpt |>
-  select(all_of(var22)) 
+# Sync variabel dan nama var ke SKIM23
+stpim22_imptpt <- stpim22_imptpt |>
+  mutate(tahun   = 2022,
+         r206b_1 = rowSums(across(c("Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon")), na.rm = TRUE),  #tk_laki
+         r206b_2 = rowSums(across(c("Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon")), na.rm = TRUE), #tk_perem
+         r206c_1 = rowSums(across(c("Lprnop", "Lprnon")), na.rm = TRUE), #tk_prod
+         r206c_2 = rowSums(across(c("Lnpnop", "Lnpnon")), na.rm = TRUE), #tk_lain
+         r206d   = Ltlnof, #tk_asing
+         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
+         r301a_1 = Zptvcu, #upah_tkprod
+         r301a_2 = Zprvcu, #pengpeklain_tkprod
+         r301b_1 = Zntvcu, #upah_tklain
+         r301b_2 = Znrvcu, #pengpeklain_tklain
+         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA
+         ) |>
+  rename(kip       = Kipb,
+         prov      = Dprovi,
+         kab       = Dkabup,
+         r203      = Year)
 
-stpim21_imptpt_var <- stpim21_imptpt |>
-  select(all_of(var21))
+stpim21_imptpt <- stpim21_imptpt |>
+  mutate(tahun = 2021,
+         r206b_1 = rowSums(across(c("Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", 
+                                    "Pttlpi", "Pttlpa", "Pttlni", "Pttlna")), na.rm = TRUE),  #tk_laki
+         r206b_2 = rowSums(across(c("Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", 
+                                    "Pttppi", "Pttppa", "Pttpni", "Pttpna", 
+                                    "Ptdpri", "Ptdpra", "Ptdnpi", "Ptdnpa")), na.rm = TRUE), #tk_perem
+         r206c_1 = rowSums(across(c("Lprnol", "Lprnof")), na.rm = TRUE), #tk_prod
+         r206c_2 = rowSums(across(c("Lnpnol", "Lnpnof")), na.rm = TRUE), #tk_lain
+         r206d   = rowSums(across(c("Lprnof", "Lnpnof")), na.rm = TRUE), #tk_asing
+         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
+         r301a_1 = Zptvcu, #upah_tkprod
+         r301a_2 = rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
+         r301b_1 = Zntvcu, #upah_tklain
+         r301b_2 = rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
+         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA
+         ) |>
+  rename(kip       = Kipb,
+         prov      = Dprovi,
+         kab       = Dkabup,
+         r203      = Year)
+
+```
+
+- Mengimputasi sisa KIP tanpa histori data dengan TK = 20, Upah = tk x 12 bulan operasional x UMP (asumsi UMP Jabar & Jateng 1,9juta)
+
+```{r}
+sisa_target21 <- sisa_target21 |>
+  mutate(tahun = 0000,
+         r203    = 12,  #bulan operasi
+         r206b_1 = 20,  #tk_laki
+         r206b_2 =  0,  #tk_perem
+         r206c_1 = 20,  #tk_prod
+         r206c_2 =  0,  #tk_lain
+         r206d   =  0, #tk_asing
+         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
+         r301a_1 = r206b_1 * r203 * 1900, #upah_tkprod (asumsi: produksi 12 bulan, UMP Jabar Jateng ~1,9juta)
+         r301a_2 =  0, #pengpeklain_tkprod
+         r301b_1 =  0, #upah_tklain
+         r301b_2 =  0, #pengpeklain_tklain
+         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA,
+         Disic5    = NA
+         )
+```
+
+- Menyatukan semua sumber data historis imputasi menjadi satu dataset.
+
+```{r}
+# Combine dataset STPIM22, STPIM21, dan no histori KIP
+stpim_imptpt <- stpim22_imptpt |>
+  select(all_of(varskim23)) |>
+  bind_rows(select(stpim21_imptpt, all_of(varskim23))) |>
+  bind_rows(select(sisa_target21, all_of(varskim23))) |>
+  left_join(target_imptpt[c("kip", "b2r217")], by = "kip") |>
+  select(-b2r217.x) |>
+  rename(b2r217 = b2r217.y) |> 
+  mutate(kbli2_dpa23 = substr(b2r217, 1, 2),
+         kbli2_stpim = substr(Disic5, 1, 2))
+
+```
+
+- Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya bukan TPT?
+
+```{r}
+cek_kbli <- stpim_imptpt |> 
+  filter(kbli2_stpim != 13 & kbli2_stpim != 14) |>
+  left_join(dpa23[c("kip", "b2r216")], by = "kip") |>
+  left_join(stpim22[c("Kipb", "Produksi")], by = c("kip" = "Kipb")) |>
+  rename(produksi_dpa23 = b2r216,
+         produksi_stpim = Produksi)
+
+list_cek_kbli <- cek_kbli |>
+  select(tahun, kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23) |>
+  print()
+
+#Note: ada beberapa KIP yang data historisnya bukan TPT >> cek satu-satu
+#Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT, a.l.: 
+
+#`r list_cek_kbli`
+
+#Setelah dilakukan pengecekan, KIP berikut yang layak menjadi target TPT:
+
+```
 
 
-#kelompokkan basis data historis 2020-2022 >> mapping variabel apa yang diperlukan: kipb, dprovi, dkabup, disic5, rincian tk, pengeluaran pekerja, rincian output, rincian input.
-#imputasi tk untuk sisanya
-
+```{r}
 target_imptpt
 
 ## variabel imputasi?
