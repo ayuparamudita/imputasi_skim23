@@ -220,7 +220,8 @@ var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
            "Zpdvcu", #pengpek_prod
            "Zndvcu" #pengpek_lain
            )
-  
+
+
 stpim22_imptpt_var <- stpim22_imptpt |>
   select(all_of(var22)) 
 
