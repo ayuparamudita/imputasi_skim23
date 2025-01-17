@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readxl)
 library(dplyr)
 library(knitr)
+library(writexl)
 ```
 
 
@@ -147,7 +148,7 @@ Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, dokume
 **Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
 
 
-# IMPUTASI
+# Imputasi tenaga kerja dan upah
 
 ## Load data sumber imputasi
 
@@ -198,12 +199,15 @@ Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan 
 
 **`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
 
-## Mapping variabel STPIM21 dan STPIM22 ke SKIM23
+## Mapping variabel dan imputasi tenaga kerja dan upah sebagai variabel dasar
 
 Langkah-langkah yang dilakukan di tahap ini:
 
-- Mapping nama variabel STPIM21, STPIM22, SKIM23.
+- Mapping nama variabel STPIM21, STPIM22, SKIM23 (acuan variabel SKIM23).
 - Mensinkronkan variabel STPIM21 dan STPIM22 sesuai dengan SKIM23.
+- Melakukan imputasi tenaga kerja dengan tenaga kerja tahun sebelumnya.
+- Melakukan imputasi upah dengan upah sebelumnya dengan adjustment rata-rata pertumbuhan UMP sebesar 7,5 persen.
+[Tautan sumber dasar imputasi - Klik di sini](https://www.suara.com/news/2023/01/01/190351/rincian-lengkap-ump-2023-yang-mulai-berlaku-1-januari)
 
 ```{r }
 #menghapus tahun di nama variabel
@@ -251,7 +255,7 @@ varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2
                "r301c" #total_upah
                )
 
-# Sync variabel dan nama var ke SKIM23
+# Sync variabel dan nama var ke SKIM23 & Imputasi TK dan Pengeluaran Pekerja
 stpim22_imptpt <- stpim22_imptpt |>
   mutate(tahun   = 2022,
          r206b_1 = rowSums(across(c("Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon")), na.rm = TRUE),  #tk_laki
@@ -260,10 +264,10 @@ stpim22_imptpt <- stpim22_imptpt |>
          r206c_2 = rowSums(across(c("Lnpnop", "Lnpnon")), na.rm = TRUE), #tk_lain
          r206d   = Ltlnof, #tk_asing
          r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
-         r301a_1 = Zptvcu, #upah_tkprod
-         r301a_2 = Zprvcu, #pengpeklain_tkprod
-         r301b_1 = Zntvcu, #upah_tklain
-         r301b_2 = Znrvcu, #pengpeklain_tklain
+         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2 = 1.075 * Zprvcu, #pengpeklain_tkprod
+         r301b_1 = 1.075 * Zntvcu, #upah_tklain
+         r301b_2 = 1.075 * Znrvcu, #pengpeklain_tklain
          r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
          r201_kode = NA,
          b2r217    = NA
@@ -284,10 +288,10 @@ stpim21_imptpt <- stpim21_imptpt |>
          r206c_2 = rowSums(across(c("Lnpnol", "Lnpnof")), na.rm = TRUE), #tk_lain
          r206d   = rowSums(across(c("Lprnof", "Lnpnof")), na.rm = TRUE), #tk_asing
          r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
-         r301a_1 = Zptvcu, #upah_tkprod
-         r301a_2 = rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
-         r301b_1 = Zntvcu, #upah_tklain
-         r301b_2 = rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
+         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2 = 1.075 * rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
+         r301b_1 = 1.075 * Zntvcu, #upah_tklain
+         r301b_2 = 1.075 * rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
          r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
          r201_kode = NA,
          b2r217    = NA
@@ -338,7 +342,14 @@ stpim_imptpt <- stpim22_imptpt |>
 
 ```
 
-- Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya bukan TPT?
+## Cek konsistensi KBLI di STPIM dan DPA
+
+Pengecekan dan penetapan KBLI diperlukan karena KBLI sebagai dasar imputasi lebih lanjut.
+
+- Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya bukan TPT? 
+- Cek KBLI dan produksi perusahaan yang terindikasi bukan TPT.
+- Keluarkan yang kira-kira bukan TPT.
+- Update KBLI yang sudah dicek dengan imputasi dari sumber DPA yang dicek benar.
 
 ```{r}
 cek_kbli <- stpim_imptpt |> 
@@ -349,20 +360,39 @@ cek_kbli <- stpim_imptpt |>
          produksi_stpim = Produksi)
 
 list_cek_kbli <- cek_kbli |>
-  select(tahun, kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23) |>
+  select(kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23, tahun) |>
   print()
 
-#Note: ada beberapa KIP yang data historisnya bukan TPT >> cek satu-satu
-#Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT, a.l.: 
+#write_xlsx(cek_kbli, "cek_kbli.xlsx")
 
-#`r list_cek_kbli`
+#KIP yang sudah dicek dan diindikasi bukan TPT
+cek_kbli_nontpt <- c(311390007, 311390456, 311510118, 311810306, 312210019, 321311729, 
+                     321311804, 321311819, 321390608, 321391680, 321391771, 321412390, 
+                     321510033, 321720004, 322100212, 322931973, 331020610, 331391969, 
+                     332930002, 333100045, 341390020, 351310950, 351390042, 351390102, 
+                     351390414, 351391068, 351391079, 351411144, 352220076, 361390162, 
+                     321410652)
 
-#Setelah dilakukan pengecekan, KIP berikut yang layak menjadi target TPT:
+#Keluarkan perusahaan non-TPT
+stpim_imptpt <- stpim_imptpt |>
+  filter(!(kip %in% cek_kbli_nontpt))
+
+#Update KBLI STPIM hasil pengecekan dengan KBLI DPA
+stpim_imptpt1 <- stpim_imptpt |>
+  mutate(Disic5      = ifelse(!(kip %in% cek_kbli_nontpt), b2r217, Disic5),
+         kbli2_stpim = ifelse(!(kip %in% cek_kbli_nontpt), kbli2_dpa23, kbli2_stpim))
 
 ```
 
+Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan pengecekan, `r length(cek_kbli_nontpt)` KIP dieliminasi karena bukan industri TPT.
+
+**Target imputasi sekarang menjadi: `r nrow(stpim_imptpt)` perusahaan.**
 
 ```{r}
+
+# Menentukan kbli dasar untuk imputasi >> acuan DPA23 karena lebih update dibandingkan data historis STPIM
+# Menentukan metod imputasi
+
 target_imptpt
 
 ## variabel imputasi?

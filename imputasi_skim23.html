@@ -11,7 +11,7 @@
 
 <meta name="author" content="Ayu Paramudita" />
 
-<meta name="date" content="2025-01-10" />
+<meta name="date" content="2025-01-17" />
 
 <title>Imputasi SKIM23</title>
 
@@ -352,25 +352,43 @@ display: none;
 
 <h1 class="title toc-ignore">Imputasi SKIM23</h1>
 <h4 class="author">Ayu Paramudita</h4>
-<h4 class="date">2025-01-10</h4>
+<h4 class="date">2025-01-17</h4>
 
 </div>
 
 <div id="TOC">
 <ul>
+<li><a href="#investigasi-target-imputasi" id="toc-investigasi-target-imputasi">Investigasi target imputasi</a>
+<ul>
 <li><a href="#load-data" id="toc-load-data">Load data</a></li>
 <li><a href="#data-dpa23-tpt" id="toc-data-dpa23-tpt">Data DPA23
 TPT</a></li>
 <li><a href="#cek-skim23" id="toc-cek-skim23">Cek SKIM23</a></li>
-<li><a href="#target-usaha-skim-yang-perlu-imputasi-dengan-dasar-dpa23-tpt" id="toc-target-usaha-skim-yang-perlu-imputasi-dengan-dasar-dpa23-tpt">Target
-usaha SKIM yang perlu imputasi dengan dasar DPA23 TPT</a></li>
-<li><a href="#cek-dpa23-tpt-dengan-weight" id="toc-cek-dpa23-tpt-dengan-weight">Cek DPA23 TPT dengan
-weight</a></li>
-<li><a href="#cek-stpim23-tpt-dan-weight" id="toc-cek-stpim23-tpt-dan-weight">Cek STPIM23 TPT dan weight</a></li>
-<li><a href="#imputasi" id="toc-imputasi">IMPUTASI</a></li>
+<li><a href="#target-usaha-skim-yang-perlu-imputasi-dengan-dasar-jumlah-usaha-dari-dpa23-tpt" id="toc-target-usaha-skim-yang-perlu-imputasi-dengan-dasar-jumlah-usaha-dari-dpa23-tpt">Target
+usaha SKIM yang perlu imputasi dengan dasar jumlah usaha dari DPA23
+TPT</a></li>
+<li><a href="#cek-dpa23-tpt-dengan-weight-stpim23" id="toc-cek-dpa23-tpt-dengan-weight-stpim23">Cek DPA23 TPT dengan weight
+STPIM23</a></li>
+<li><a href="#cek-stpim23-tpt-dan-weight-stpim23" id="toc-cek-stpim23-tpt-dan-weight-stpim23">Cek STPIM23 TPT dan weight
+STPIM23</a></li>
+</ul></li>
+<li><a href="#imputasi-tenaga-kerja-dan-upah" id="toc-imputasi-tenaga-kerja-dan-upah">Imputasi tenaga kerja dan
+upah</a>
+<ul>
+<li><a href="#load-data-sumber-imputasi" id="toc-load-data-sumber-imputasi">Load data sumber imputasi</a></li>
+<li><a href="#cek-irisan-target-imputasi-dengan-stpim22-stpim21-dan-stpim20" id="toc-cek-irisan-target-imputasi-dengan-stpim22-stpim21-dan-stpim20">Cek
+irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20</a></li>
+<li><a href="#mapping-variabel-dan-imputasi-tenaga-kerja-dan-upah-sebagai-variabel-dasar" id="toc-mapping-variabel-dan-imputasi-tenaga-kerja-dan-upah-sebagai-variabel-dasar">Mapping
+variabel dan imputasi tenaga kerja dan upah sebagai variabel
+dasar</a></li>
+<li><a href="#cek-konsistensi-kbli-di-stpim-dan-dpa" id="toc-cek-konsistensi-kbli-di-stpim-dan-dpa">Cek konsistensi KBLI di
+STPIM dan DPA</a></li>
+</ul></li>
 </ul>
 </div>
 
+<div id="investigasi-target-imputasi" class="section level1">
+<h1>Investigasi target imputasi</h1>
 <div id="load-data" class="section level2">
 <h2>Load data</h2>
 <pre class="r"><code>dpa23   &lt;- read_xlsx(&quot;D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA NASIONAL tahun 2023.xlsx&quot;)
@@ -382,15 +400,15 @@ weight23 &lt;- read.csv2(&quot;D:/##AYUPA DESKTOP 2/Imputasi SKIM23/2024-12-23 1
 <div id="data-dpa23-tpt" class="section level2">
 <h2>Data DPA23 TPT</h2>
 <pre class="r"><code>dpa23_tpt &lt;- dpa23 |&gt;
-  mutate(kbli2 = substr(b2r217, 1, 2)) |&gt;
+  mutate(kbli2_dpa23 = substr(b2r217, 1, 2)) |&gt;
   filter(b2r205 == 1,                            # kondisi aktif
          b2r210 != 4,                            # bukan kantor pusat
-         kbli2  == 13 | kbli2 == 14              # kbli 13 dan 14
+         kbli2_dpa23 == 13 | kbli2_dpa23 == 14              # kbli 13 dan 14
          ) |&gt;
-  select(kip, prov, kbli2, b2r205, b2r210)
+  select(kip, prov, kab, b2r217, kbli2_dpa23, b2r205, b2r210, b2r224, b2r225, b2r226, b2r218)
 
 # Buat tabel
-tab_dpa23tpt &lt;- table(dpa23_tpt$kbli2)
+tab_dpa23tpt &lt;- table(dpa23_tpt$kbli2_dpa23)
 tab_dpa23tpt &lt;- as.data.frame(tab_dpa23tpt) |&gt;
   rename(KBLI = Var1,
          N    = Freq) 
@@ -398,8 +416,11 @@ tab_dpa23tpt &lt;- as.data.frame(tab_dpa23tpt) |&gt;
 total_dpatpt23 &lt;- data.frame(KBLI = &quot;Total&quot;, N = sum(tab_dpa23tpt$N))
 tab_dpa23tpt &lt;- rbind(tab_dpa23tpt, total_dpatpt23)
 tab_dpa23tpt &lt;- kable(tab_dpa23tpt)</code></pre>
-<p>Referensi target usaha: DPA23 kondisi 1 (aktif), KBLI 13-14, dan
-selain kantor pusat.</p>
+<p>Referensi <strong>target usaha awal</strong>: DPA23 kondisi 1
+(aktif), KBLI 13-14, dan selain kantor pusat. <em>Kenapa <strong>target
+usaha awal</strong>? Karena nanti di akhir setelah imputasi akan dicek
+kembali (range tenaga kerja, investasi, omset, badan usaha/hukum, dll
+dari DPA23) mana yang layak masuk sebagai mfg/data final.</em></p>
 <p>Jumlah target usaha TPT (KBLI 13 &amp; 14) menurut DPA23:
 <strong>4086</strong>.</p>
 <p>Dengan rincian sebagai berikut:</p>
@@ -468,22 +489,25 @@ nkbli_na &lt;- sum(is.na(skim23$kbli2))   </code></pre>
 </table>
 <p><strong>KBLI yang NA : 134</strong></p>
 </div>
-<div id="target-usaha-skim-yang-perlu-imputasi-dengan-dasar-dpa23-tpt" class="section level2">
-<h2>Target usaha SKIM yang perlu imputasi dengan dasar DPA23 TPT</h2>
+<div id="target-usaha-skim-yang-perlu-imputasi-dengan-dasar-jumlah-usaha-dari-dpa23-tpt" class="section level2">
+<h2>Target usaha SKIM yang perlu imputasi dengan dasar jumlah usaha dari
+DPA23 TPT</h2>
 <pre class="r"><code>target_imptpt &lt;- dpa23_tpt |&gt;
   filter(!(kip %in% skim23$kip))</code></pre>
 <p><strong>Target imputasi TPT: 1016.</strong></p>
 </div>
-<div id="cek-dpa23-tpt-dengan-weight" class="section level2">
-<h2>Cek DPA23 TPT dengan weight</h2>
-<pre class="r"><code># Cek irisan DPA23 TPT dan weight
+<div id="cek-dpa23-tpt-dengan-weight-stpim23" class="section level2">
+<h2>Cek DPA23 TPT dengan weight STPIM23</h2>
+<p>Catatan: weight STPIM23 adalah dokumen berisi list KIP usaha STPIM23
+dan penimbangnya.</p>
+<pre class="r"><code># Cek irisan DPA23 TPT dan weight STPIM23
 cek_dpa23tpt_weight &lt;- dpa23_tpt |&gt;
   filter((kip %in% weight23$kipb))</code></pre>
 <p>Tidak ada irisan DPA23 TPT dengan weight: aman. Sehingga, target
-imputasi TPT tetap <strong>1016</strong>.</p>
+imputasi TPT <strong>1016</strong>.</p>
 </div>
-<div id="cek-stpim23-tpt-dan-weight" class="section level2">
-<h2>Cek STPIM23 TPT dan weight</h2>
+<div id="cek-stpim23-tpt-dan-weight-stpim23" class="section level2">
+<h2>Cek STPIM23 TPT dan weight STPIM23</h2>
 <pre class="r"><code># Cek usaha TPT di STPIM23
 stpim23_tpt &lt;- stpim23 |&gt;
   mutate(kbli2 = substr(r201_kode, 1, 2)) |&gt;
@@ -492,14 +516,14 @@ stpim23_tpt &lt;- stpim23 |&gt;
 list_stpim23_tpt &lt;- print(stpim23_tpt$kip)
 
 total_tpt23 &lt;- nrow(stpim23_tpt) + nrow(target_imptpt) + nrow(skim23)</code></pre>
-<p>Ternyata masih ada usaha TPT yang dicatat di STPIM23. Apakah 44 usaha
-13-14 STPIM23 ini ada di weight?</p>
+<p>Ternyata masih ada 44 usaha TPT yang dicatat di STPIM23. Apakah 44
+usaha 13-14 STPIM23 ini ada di weight?</p>
 <pre class="r"><code># Cek irisan STPIM23 dan weight
 cek_stpim23tpt_weight &lt;- stpim23_tpt |&gt;
   filter((kip %in% weight23$kipb))</code></pre>
-<p>Ada 3 usaha 13-14 yang ada di weight. Maka, weight harus diupdate
-dengan mengeluarkan 3 usaha 13-14 ini. KIP 3 perusahaan tersebut a.l.:
-321311800, 331411475, 343230012.</p>
+<p>Ada 3 usaha 13-14 yang ada di weight. Maka, dokumen weight harus
+diupdate dengan mengeluarkan 3 usaha 13-14 ini. KIP 3 perusahaan
+tersebut a.l.: 321311800, 331411475, 343230012.</p>
 <p><strong>44 usaha 13-14 STPIM23 harus masuk menjadi cakupan
 SKIM23</strong>. <em>Jangan lupa untuk dimasukkan saat mengkompilasi
 data SKIM23 untuk tabulasi nanti</em>. KIP 44 perusahaan tersebut
@@ -513,25 +537,281 @@ a.l.:</p>
 331810293, 353290376, 311390455, 331810302, 322592355, 343230012,
 341390028, 331510090</p>
 <p><strong>Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar :
-4373</strong> (STPIM23 TPT + Target Imputasi + SKIM23).</p>
+4373</strong> (44 STPIM23 TPT + 1016 Target Imputasi + 3313 SKIM23).</p>
 </div>
-<div id="imputasi" class="section level2">
-<h2>IMPUTASI</h2>
-<pre class="r"><code>target_imptpt</code></pre>
-<pre><code>## # A tibble: 1,016 × 5
-##    kip       prov  kbli2 b2r205 b2r210
-##    &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt; 
-##  1 111390017 11    13    1      1     
-##  2 121410008 12    13    1      3     
-##  3 121310493 12    13    1      3     
-##  4 121390040 12    13    1      1     
-##  5 121410333 12    14    1      1     
-##  6 121310497 12    13    1      1     
-##  7 121390002 12    13    1      1     
-##  8 121410003 12    14    1      2     
-##  9 121410019 12    14    1      1     
-## 10 121410330 12    14    1      1     
-## # ℹ 1,006 more rows</code></pre>
+</div>
+<div id="imputasi-tenaga-kerja-dan-upah" class="section level1">
+<h1>Imputasi tenaga kerja dan upah</h1>
+<div id="load-data-sumber-imputasi" class="section level2">
+<h2>Load data sumber imputasi</h2>
+<pre class="r"><code>stpim22 &lt;- read_xlsx(&quot;D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg22.xlsx&quot;)
+stpim21 &lt;- read_xlsx(&quot;D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx&quot;)
+#stpim20 &lt;- read_xlsx(&quot;D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg20f.xlsx&quot;)
+
+stpim22 &lt;- stpim22 |&gt;
+  mutate(kbli2_stpim = substr(Disic522, 1, 2))</code></pre>
+</div>
+<div id="cek-irisan-target-imputasi-dengan-stpim22-stpim21-dan-stpim20" class="section level2">
+<h2>Cek irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20</h2>
+<p>Cek irisan ini bertujuan untuk mendapatkan basis data dari data
+historis masing-masing KIP yang ingin diimputasi.</p>
+<pre class="r"><code># irisan target imputasi dengan stpim22
+stpim22_imptpt &lt;- stpim22 |&gt;
+  filter(Kipb %in% target_imptpt$kip) 
+
+# sisa target imputasi &amp; tambahan informasi variabel tk, inves, omset dari dpa23
+sisa_target22 &lt;- target_imptpt |&gt;
+  filter(!(kip %in% stpim22_imptpt$Kipb)) |&gt;
+  left_join(dpa23, by = &quot;kip&quot;) |&gt;
+  select(kip, prov.x, kab.x, b2r217.x, kbli2_dpa23, b2r205.x, b2r210.x, b2r224.x, b2r225.x, b2r226.x, b2r218.x) |&gt;
+  rename(prov = prov.x,
+         kab  = kab.x,
+         b2r217 = b2r217.x,
+         b2r205 = b2r205.x,
+         b2r210 = b2r210.x,
+         b2r224 = b2r224.x,
+         b2r225 = b2r225.x,
+         b2r226 = b2r226.x,
+         b2r218 = b2r218.x)
+
+# irisan target imputasi dengan stpim21
+stpim21_imptpt &lt;- stpim21 |&gt;
+  filter(Kipb %in% sisa_target22$kip)
+
+# sisa target imputasi 
+sisa_target21 &lt;- sisa_target22 |&gt;
+  filter(!(kip %in% stpim21_imptpt$Kipb))</code></pre>
+<p>Dari target imputasi TPT sebanyak <strong>1016</strong>, ditemukan
+irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi,
+a.l. sebanyak <strong>971 KIP dari STPIM22, 25 dari STPIM21</strong>,
+sisanya 20 KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data
+STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang
+semuanya nonrespon di STPIM20.</p>
+<p><strong>20 KIP tanpa historis data STPIM akan diimputasi dengan
+tenaga kerja = 20</strong> dengan pertimbangan bahwa skala usaha
+berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya
+masing-masing adalah skala usaha mikro dan kecil.</p>
+</div>
+<div id="mapping-variabel-dan-imputasi-tenaga-kerja-dan-upah-sebagai-variabel-dasar" class="section level2">
+<h2>Mapping variabel dan imputasi tenaga kerja dan upah sebagai variabel
+dasar</h2>
+<p>Langkah-langkah yang dilakukan di tahap ini:</p>
+<ul>
+<li>Mapping nama variabel STPIM21, STPIM22, SKIM23 (acuan variabel
+SKIM23).</li>
+<li>Mensinkronkan variabel STPIM21 dan STPIM22 sesuai dengan
+SKIM23.</li>
+<li>Melakukan imputasi tenaga kerja dengan tenaga kerja tahun
+sebelumnya.</li>
+<li>Melakukan imputasi upah dengan upah sebelumnya dengan adjustment
+rata-rata pertumbuhan UMP sebesar 7,5 persen. <a href="https://www.suara.com/news/2023/01/01/190351/rincian-lengkap-ump-2023-yang-mulai-berlaku-1-januari">Tautan
+sumber dasar imputasi - Klik di sini</a></li>
+</ul>
+<pre class="r"><code>#menghapus tahun di nama variabel
+stpim22_imptpt &lt;- stpim22_imptpt |&gt;
+  rename_with(~ gsub(&quot;22$&quot;, &quot;&quot;, .))
+
+stpim21_imptpt &lt;- stpim21_imptpt |&gt;
+  rename_with(~ gsub(&quot;21$&quot;, &quot;&quot;, .))
+
+# Mapping nama variabel
+var22 &lt;- c(&quot;Kipb&quot;, &quot;Dprovi&quot;, &quot;Dkabup&quot;, &quot;Disic5&quot;, &quot;Year&quot;,
+  &quot;Lpmnop&quot;, &quot;Lpmnon&quot;, &quot;Lnmnop&quot;, &quot;Lnmnon&quot;, #tk_laki
+  &quot;Lpwnop&quot;, &quot;Lpwnon&quot;, &quot;Lnwnop&quot;, &quot;Lnwnon&quot;, #tk_perem
+  &quot;Lprnop&quot;, &quot;Lprnon&quot;, #tk_prod
+  &quot;Lnpnop&quot;, &quot;Lnpnon&quot;, #tk_lain
+  &quot;Ltlnof&quot;, #tk_asing
+  &quot;Zptvcu&quot;, &quot;Zprvcu&quot;, #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+  &quot;Zntvcu&quot;, &quot;Znrvcu&quot;, #pengpek_lain = upah_tklain + pengpeklain_tklain
+  &quot;Zpdvcu&quot;, #pengpek_prod
+  &quot;Zndvcu&quot; #pengpek_lain
+  )
+
+var21 &lt;- c(&quot;Kipb&quot;, &quot;Dprovi&quot;, &quot;Dkabup&quot;, &quot;Disic5&quot;, &quot;Year&quot;,
+           &quot;Pwtlpi&quot;, &quot;Pwtlpa&quot;, &quot;Pwtlni&quot;, &quot;Pwtlna&quot;, &quot;Pttlpi&quot;, &quot;Pttlpa&quot;, &quot;Pttlni&quot;, &quot;Pttlna&quot;,   #tk_laki
+           &quot;Pwtppi&quot;, &quot;Pwtppa&quot;, &quot;Pwtpni&quot;, &quot;Pwtpna&quot;, &quot;Pttppi&quot;, &quot;Pttppa&quot;, &quot;Pttpni&quot;, &quot;Pttpna&quot;,   #tk_perem 
+           &quot;Ptdpri&quot;, &quot;Ptdpra&quot;, &quot;Ptdnpi&quot;, &quot;Ptdnpa&quot;, #tk_takdibayar (dimasukkan ke tk_perem saja)
+           &quot;Lprnol&quot;, &quot;Lprnof&quot;, #tk_prod
+           &quot;Lnpnol&quot;, &quot;Lnpnof&quot;, #tk_lain
+           &quot;Lprnof&quot;, &quot;Lnpnof&quot;, #tk_asing
+           &quot;Zptvcu&quot;, &quot;Zpevcu&quot;, &quot;Zphvcu&quot;, &quot;Zprvcu&quot;, #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+           &quot;Zntvcu&quot;, &quot;Znevcu&quot;, &quot;Znhvcu&quot;, &quot;Znrvcu&quot;, #pengpek_lain = upah_tklain + pengpeklain_tklain
+           &quot;Zpdvcu&quot;, #pengpek_prod
+           &quot;Zndvcu&quot; #pengpek_lain
+           )
+
+varskim23 &lt;- c(&quot;tahun&quot;, &quot;kip&quot;, &quot;prov&quot;, &quot;kab&quot;, &quot;r201_kode&quot;, &quot;r203&quot;, &quot;Disic5&quot;, &quot;b2r217&quot;,
+               &quot;r206b_1&quot;, #tk_laki
+               &quot;r206b_2&quot;, #tk_perem
+               &quot;r206c_1&quot;, #tk_prod
+               &quot;r206c_2&quot;, #tk_lain
+               &quot;r206d&quot;, #tk_asing
+               &quot;r206a&quot;, #total_tk
+               &quot;r301a_1&quot;, &quot;r301a_2&quot;, #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+               &quot;r301b_1&quot;, &quot;r301b_2&quot;, #pengpek_lain = upah_tklain + pengpeklain_tklain
+               &quot;r301c&quot; #total_upah
+               )
+
+# Sync variabel dan nama var ke SKIM23 &amp; Imputasi TK dan Pengeluaran Pekerja
+stpim22_imptpt &lt;- stpim22_imptpt |&gt;
+  mutate(tahun   = 2022,
+         r206b_1 = rowSums(across(c(&quot;Lpmnop&quot;, &quot;Lpmnon&quot;, &quot;Lnmnop&quot;, &quot;Lnmnon&quot;)), na.rm = TRUE),  #tk_laki
+         r206b_2 = rowSums(across(c(&quot;Lpwnop&quot;, &quot;Lpwnon&quot;, &quot;Lnwnop&quot;, &quot;Lnwnon&quot;)), na.rm = TRUE), #tk_perem
+         r206c_1 = rowSums(across(c(&quot;Lprnop&quot;, &quot;Lprnon&quot;)), na.rm = TRUE), #tk_prod
+         r206c_2 = rowSums(across(c(&quot;Lnpnop&quot;, &quot;Lnpnon&quot;)), na.rm = TRUE), #tk_lain
+         r206d   = Ltlnof, #tk_asing
+         r206a   = rowSums(across(c(&quot;r206b_1&quot;, &quot;r206b_2&quot;)), na.rm = TRUE), #total_tk
+         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2 = 1.075 * Zprvcu, #pengpeklain_tkprod
+         r301b_1 = 1.075 * Zntvcu, #upah_tklain
+         r301b_2 = 1.075 * Znrvcu, #pengpeklain_tklain
+         r301c   = rowSums(across(c(&quot;r301a_1&quot;, &quot;r301a_2&quot;, &quot;r301b_1&quot;, &quot;r301b_2&quot;)), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA
+         ) |&gt;
+  rename(kip       = Kipb,
+         prov      = Dprovi,
+         kab       = Dkabup,
+         r203      = Year)
+
+stpim21_imptpt &lt;- stpim21_imptpt |&gt;
+  mutate(tahun = 2021,
+         r206b_1 = rowSums(across(c(&quot;Pwtlpi&quot;, &quot;Pwtlpa&quot;, &quot;Pwtlni&quot;, &quot;Pwtlna&quot;, 
+                                    &quot;Pttlpi&quot;, &quot;Pttlpa&quot;, &quot;Pttlni&quot;, &quot;Pttlna&quot;)), na.rm = TRUE),  #tk_laki
+         r206b_2 = rowSums(across(c(&quot;Pwtppi&quot;, &quot;Pwtppa&quot;, &quot;Pwtpni&quot;, &quot;Pwtpna&quot;, 
+                                    &quot;Pttppi&quot;, &quot;Pttppa&quot;, &quot;Pttpni&quot;, &quot;Pttpna&quot;, 
+                                    &quot;Ptdpri&quot;, &quot;Ptdpra&quot;, &quot;Ptdnpi&quot;, &quot;Ptdnpa&quot;)), na.rm = TRUE), #tk_perem
+         r206c_1 = rowSums(across(c(&quot;Lprnol&quot;, &quot;Lprnof&quot;)), na.rm = TRUE), #tk_prod
+         r206c_2 = rowSums(across(c(&quot;Lnpnol&quot;, &quot;Lnpnof&quot;)), na.rm = TRUE), #tk_lain
+         r206d   = rowSums(across(c(&quot;Lprnof&quot;, &quot;Lnpnof&quot;)), na.rm = TRUE), #tk_asing
+         r206a   = rowSums(across(c(&quot;r206b_1&quot;, &quot;r206b_2&quot;)), na.rm = TRUE), #total_tk
+         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2 = 1.075 * rowSums(across(c(&quot;Zpevcu&quot;, &quot;Zphvcu&quot;, &quot;Zprvcu&quot;)), na.rm = TRUE), #pengpeklain_tkprod
+         r301b_1 = 1.075 * Zntvcu, #upah_tklain
+         r301b_2 = 1.075 * rowSums(across(c(&quot;Znevcu&quot;, &quot;Znhvcu&quot;, &quot;Znrvcu&quot;)), na.rm = TRUE), #pengpeklain_tklain
+         r301c   = rowSums(across(c(&quot;r301a_1&quot;, &quot;r301a_2&quot;, &quot;r301b_1&quot;, &quot;r301b_2&quot;)), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA
+         ) |&gt;
+  rename(kip       = Kipb,
+         prov      = Dprovi,
+         kab       = Dkabup,
+         r203      = Year)</code></pre>
+<ul>
+<li>Mengimputasi sisa KIP tanpa histori data dengan TK = 20, Upah = tk x
+12 bulan operasional x UMP (asumsi UMP Jabar &amp; Jateng 1,9juta)</li>
+</ul>
+<pre class="r"><code>sisa_target21 &lt;- sisa_target21 |&gt;
+  mutate(tahun = 0000,
+         r203    = 12,  #bulan operasi
+         r206b_1 = 20,  #tk_laki
+         r206b_2 =  0,  #tk_perem
+         r206c_1 = 20,  #tk_prod
+         r206c_2 =  0,  #tk_lain
+         r206d   =  0, #tk_asing
+         r206a   = rowSums(across(c(&quot;r206b_1&quot;, &quot;r206b_2&quot;)), na.rm = TRUE), #total_tk
+         r301a_1 = r206b_1 * r203 * 1900, #upah_tkprod (asumsi: produksi 12 bulan, UMP Jabar Jateng ~1,9juta)
+         r301a_2 =  0, #pengpeklain_tkprod
+         r301b_1 =  0, #upah_tklain
+         r301b_2 =  0, #pengpeklain_tklain
+         r301c   = rowSums(across(c(&quot;r301a_1&quot;, &quot;r301a_2&quot;, &quot;r301b_1&quot;, &quot;r301b_2&quot;)), na.rm = TRUE), #total_upah
+         r201_kode = NA,
+         b2r217    = NA,
+         Disic5    = NA
+         )</code></pre>
+<ul>
+<li>Menyatukan semua sumber data historis imputasi menjadi satu
+dataset.</li>
+</ul>
+<pre class="r"><code># Combine dataset STPIM22, STPIM21, dan no histori KIP
+stpim_imptpt &lt;- stpim22_imptpt |&gt;
+  select(all_of(varskim23)) |&gt;
+  bind_rows(select(stpim21_imptpt, all_of(varskim23))) |&gt;
+  bind_rows(select(sisa_target21, all_of(varskim23))) |&gt;
+  left_join(target_imptpt[c(&quot;kip&quot;, &quot;b2r217&quot;)], by = &quot;kip&quot;) |&gt;
+  select(-b2r217.x) |&gt;
+  rename(b2r217 = b2r217.y) |&gt; 
+  mutate(kbli2_dpa23 = substr(b2r217, 1, 2),
+         kbli2_stpim = substr(Disic5, 1, 2))</code></pre>
+</div>
+<div id="cek-konsistensi-kbli-di-stpim-dan-dpa" class="section level2">
+<h2>Cek konsistensi KBLI di STPIM dan DPA</h2>
+<p>Pengecekan dan penetapan KBLI diperlukan karena KBLI sebagai dasar
+imputasi lebih lanjut.</p>
+<ul>
+<li>Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya
+bukan TPT?</li>
+<li>Cek KBLI dan produksi perusahaan yang terindikasi bukan TPT.</li>
+<li>Keluarkan yang kira-kira bukan TPT.</li>
+<li>Update KBLI yang sudah dicek dengan imputasi dari sumber DPA yang
+dicek benar.</li>
+</ul>
+<pre class="r"><code>cek_kbli &lt;- stpim_imptpt |&gt; 
+  filter(kbli2_stpim != 13 &amp; kbli2_stpim != 14) |&gt;
+  left_join(dpa23[c(&quot;kip&quot;, &quot;b2r216&quot;)], by = &quot;kip&quot;) |&gt;
+  left_join(stpim22[c(&quot;Kipb&quot;, &quot;Produksi&quot;)], by = c(&quot;kip&quot; = &quot;Kipb&quot;)) |&gt;
+  rename(produksi_dpa23 = b2r216,
+         produksi_stpim = Produksi)
+
+list_cek_kbli &lt;- cek_kbli |&gt;
+  select(kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23, tahun) |&gt;
+  print()</code></pre>
+<pre><code>## # A tibble: 57 × 8
+##    kip       Disic5 b2r217 kbli2_stpim kbli2_dpa23 produksi_stpim produksi_dpa23
+##    &lt;chr&gt;     &lt;chr&gt;  &lt;chr&gt;  &lt;chr&gt;       &lt;chr&gt;       &lt;chr&gt;          &lt;chr&gt;         
+##  1 311390007 22292  13929  22          13          INDUSTRI BUSA… busa/foam     
+##  2 311390456 31009  13923  31          13          KASUR BAYI     MEMBUAT KASUR…
+##  3 311412921 15121  14111  15          14          INDUSTRI PAKA… INDUSTRI PAKA…
+##  4 311510118 15121  14111  15          14          MEMBUAT MACAM… PAKAIAN JADI  
+##  5 311810306 18111  14111  18          14          PERCETAKAN     PERCETAKAN    
+##  6 312210019 22199  14131  22          14          balon tiup (m… balon tiup (m…
+##  7 312810132 28199  14111  28          14          GARMENT        GARMENT       
+##  8 313290074 18111  14111  18          14          garment baju … garment baju …
+##  9 321311729 17099  14111  17          14          HIGH PRESSURE… Pakaian       
+## 10 321311804 20221  13133  20          13          PRODUKSI CAT   Printing      
+## # ℹ 47 more rows
+## # ℹ 1 more variable: tahun &lt;dbl&gt;</code></pre>
+<pre class="r"><code>#write_xlsx(cek_kbli, &quot;cek_kbli.xlsx&quot;)
+
+#KIP yang sudah dicek dan diindikasi bukan TPT
+cek_kbli_nontpt &lt;- c(311390007, 311390456, 311510118, 311810306, 312210019, 321311729, 
+                     321311804, 321311819, 321390608, 321391680, 321391771, 321412390, 
+                     321510033, 321720004, 322100212, 322931973, 331020610, 331391969, 
+                     332930002, 333100045, 341390020, 351310950, 351390042, 351390102, 
+                     351390414, 351391068, 351391079, 351411144, 352220076, 361390162, 
+                     321410652)
+
+#Keluarkan perusahaan non-TPT
+stpim_imptpt &lt;- stpim_imptpt |&gt;
+  filter(!(kip %in% cek_kbli_nontpt))
+
+#Update KBLI STPIM hasil pengecekan dengan KBLI DPA
+stpim_imptpt1 &lt;- stpim_imptpt |&gt;
+  mutate(Disic5      = ifelse(!(kip %in% cek_kbli_nontpt), b2r217, Disic5),
+         kbli2_stpim = ifelse(!(kip %in% cek_kbli_nontpt), kbli2_dpa23, kbli2_stpim))</code></pre>
+<p>Ada 57 KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan
+pengecekan, 31 KIP dieliminasi karena bukan industri TPT.</p>
+<p><strong>Target imputasi sekarang menjadi: 985
+perusahaan.</strong></p>
+<pre class="r"><code># Menentukan kbli dasar untuk imputasi &gt;&gt; acuan DPA23 karena lebih update dibandingkan data historis STPIM
+# Menentukan metod imputasi
+
+target_imptpt</code></pre>
+<pre><code>## # A tibble: 1,016 × 11
+##    kip       prov  kab   b2r217 kbli2_dpa23 b2r205 b2r210 b2r224 b2r225 b2r226
+##    &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt;       &lt;chr&gt;  &lt;chr&gt;  &lt;chr&gt;  &lt;chr&gt;  &lt;chr&gt; 
+##  1 111390017 11    14    13929  13          1      1      1      1      1     
+##  2 121410008 12    06    13121  13          1      3      3      2      2     
+##  3 121310493 12    06    13121  13          1      3      3      2      2     
+##  4 121390040 12    12    13993  13          1      1      3      3      3     
+##  5 121410333 12    12    14111  14          1      1      3      1      2     
+##  6 121310497 12    12    13121  13          1      1      2      1      1     
+##  7 121390002 12    75    13911  13          1      1      3      1      1     
+##  8 121410003 12    75    14111  14          1      2      2      1      1     
+##  9 121410019 12    75    14111  14          1      1      2      1      1     
+## 10 121410330 12    75    14111  14          1      1      1      1      1     
+## # ℹ 1,006 more rows
+## # ℹ 1 more variable: b2r218 &lt;chr&gt;</code></pre>
 <pre class="r"><code>## variabel imputasi?
 ## model apa imputasi? rasio? ml?
 ## tk : historis 22
@@ -539,6 +819,7 @@ a.l.:</p>
 ## total output : rasio/ml?
 ## breakdown output : rasio komponen?
 ## biaya input?</code></pre>
+</div>
 </div>
 
 
