@@ -378,9 +378,9 @@ stpim_imptpt <- stpim_imptpt |>
   filter(!(kip %in% cek_kbli_nontpt))
 
 #Update KBLI STPIM hasil pengecekan dengan KBLI DPA
-stpim_imptpt1 <- stpim_imptpt |>
-  mutate(Disic5      = ifelse(!(kip %in% cek_kbli_nontpt), b2r217, Disic5),
-         kbli2_stpim = ifelse(!(kip %in% cek_kbli_nontpt), kbli2_dpa23, kbli2_stpim))
+stpim_imptpt <- stpim_imptpt |>
+  mutate(Disic5      = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), b2r217, Disic5),
+         kbli2_stpim = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim))
 
 ```
 
@@ -390,7 +390,7 @@ Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilaku
 
 ```{r}
 
-# Menentukan kbli dasar untuk imputasi >> acuan DPA23 karena lebih update dibandingkan data historis STPIM
+# Menentukan kbli dasar untuk imputasi >> KBLI STPIM dengan asumsi pemeriksaan STPIM berjalan dengan benar.
 # Menentukan metod imputasi
 
 target_imptpt
