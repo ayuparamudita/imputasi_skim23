@@ -16,6 +16,7 @@ library(readxl)
 library(dplyr)
 library(knitr)
 library(writexl)
+library(tidyr)
 ```
 
 
@@ -159,6 +160,9 @@ stpim21 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx")
 
 stpim22 <- stpim22 |>
   mutate(kbli2_stpim = substr(Disic522, 1, 2))
+
+stpim21 <- stpim21 |>
+  mutate(kbli2_stpim = substr(Disic521, 1, 2))
 ```
 
 ## Cek irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20
@@ -219,18 +223,29 @@ stpim21_imptpt <- stpim21_imptpt |>
 
 # Mapping nama variabel
 var22 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
-  "Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon", #tk_laki
-  "Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon", #tk_perem
-  "Lprnop", "Lprnon", #tk_prod
-  "Lnpnop", "Lnpnon", #tk_lain
-  "Ltlnof", #tk_asing
-  "Zptvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-  "Zntvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
-  "Zpdvcu", #pengpek_prod
-  "Zndvcu" #pengpek_lain
-  )
+        # TK dan Upah
+           "Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon", #tk_laki
+           "Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon", #tk_perem
+           "Lprnop", "Lprnon", #tk_prod
+           "Lnpnop", "Lnpnon", #tk_lain
+           "Ltlnof", #tk_asing
+           "Zptvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+           "Zntvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
+           "Zpdvcu", #pengpek_prod
+           "Zndvcu") #pengpek_lain
+        
+         # Komposisi Biaya INPUT
+         #  "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
+        #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
+        #   "Ibrvcu", #sewagdg
+        #   "Ilrvcu", "Itxvcu", "Iinvcu", "Icovcu", "Idevcu", "Iprvcu", #sewatnh #pajak #bunga #hibah #deviden #premi
+        #   "Ipkvcu", "Irdvcu", "Iklvcu", "Ikdvcu",  #kemasan #rnd #haki_dom #haki_ln
+        #   "Iislov", #Iisfov, #peng_maklun_dom #peng_maklun_ln
+        #   "Iuwvcu", "Iotvcu" #air #peng_lainlain
+        #   )
 
 var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
+        # TK dan Upah
            "Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", "Pttlpi", "Pttlpa", "Pttlni", "Pttlna",   #tk_laki
            "Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", "Pttppi", "Pttppa", "Pttpni", "Pttpna",   #tk_perem 
            "Ptdpri", "Ptdpra", "Ptdnpi", "Ptdnpa", #tk_takdibayar (dimasukkan ke tk_perem saja)
@@ -240,10 +255,19 @@ var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
            "Zptvcu", "Zpevcu", "Zphvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
            "Zntvcu", "Znevcu", "Znhvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
            "Zpdvcu", #pengpek_prod
-           "Zndvcu" #pengpek_lain
-           )
+           "Zndvcu") #pengpek_lain
+        # Komposisi Biaya INPUT
+        #   "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
+        #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
+        #   "Ibrvcu", #sewagdg
+        #   "Ilrvcu", "Itxvcu", "Iinvcu", "Icovcu", "Idevcu", "Iprvcu", #sewatnh #pajak #bunga #hibah #deviden #premi
+        #   "Ipkvcu", "Irdvcu", "Iklvcu", "Ikdvcu",  #kemasan #rnd #haki_dom #haki_ln
+        #   "Iislov", #Iisfov, #peng_maklun_dom #peng_maklun_ln
+        #   "Iuwvcu", "Iotvcu" #air #peng_lainlain
+        #   )
 
 varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2r217",
+          # TK dan Upah
                "r206b_1", #tk_laki
                "r206b_2", #tk_perem
                "r206c_1", #tk_prod
@@ -252,12 +276,21 @@ varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2
                "r206a", #total_tk
                "r301a_1", "r301a_2", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
                "r301b_1", "r301b_2", #pengpek_lain = upah_tklain + pengpeklain_tklain
-               "r301c" #total_upah
-               )
+               "r301c") #total_upah
+          # Komposisi Biaya INPUT
+         #      "r501k5_sum", "r501k7_sum", #bbakupen_dom #bbakupen_imp
+        #       "r303a", "r304c", #bbakar #listrik
+        #       "r305a", #sewagdg 
+        #       "r305b", "r306", "r307", "r308", "r309", "r310", #sewatnh #pajak #bunga #hibah #deviden #premi
+        #       "r311", #peng_maklun
+        #       "r312", "r313" #air #peng_lainlain
+        #       )
 
 # Sync variabel dan nama var ke SKIM23 & Imputasi TK dan Pengeluaran Pekerja
 stpim22_imptpt <- stpim22_imptpt |>
   mutate(tahun   = 2022,
+         r201_kode = NA,
+         b2r217    = NA,
          r206b_1 = rowSums(across(c("Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon")), na.rm = TRUE),  #tk_laki
          r206b_2 = rowSums(across(c("Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon")), na.rm = TRUE), #tk_perem
          r206c_1 = rowSums(across(c("Lprnop", "Lprnon")), na.rm = TRUE), #tk_prod
@@ -268,9 +301,7 @@ stpim22_imptpt <- stpim22_imptpt |>
          r301a_2 = 1.075 * Zprvcu, #pengpeklain_tkprod
          r301b_1 = 1.075 * Zntvcu, #upah_tklain
          r301b_2 = 1.075 * Znrvcu, #pengpeklain_tklain
-         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
-         r201_kode = NA,
-         b2r217    = NA
+         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
          ) |>
   rename(kip       = Kipb,
          prov      = Dprovi,
@@ -279,6 +310,8 @@ stpim22_imptpt <- stpim22_imptpt |>
 
 stpim21_imptpt <- stpim21_imptpt |>
   mutate(tahun = 2021,
+         r201_kode = NA,
+         b2r217    = NA,
          r206b_1 = rowSums(across(c("Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", 
                                     "Pttlpi", "Pttlpa", "Pttlni", "Pttlna")), na.rm = TRUE),  #tk_laki
          r206b_2 = rowSums(across(c("Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", 
@@ -292,9 +325,7 @@ stpim21_imptpt <- stpim21_imptpt |>
          r301a_2 = 1.075 * rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
          r301b_1 = 1.075 * Zntvcu, #upah_tklain
          r301b_2 = 1.075 * rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
-         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
-         r201_kode = NA,
-         b2r217    = NA
+         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
          ) |>
   rename(kip       = Kipb,
          prov      = Dprovi,
@@ -350,6 +381,7 @@ Pengecekan dan penetapan KBLI diperlukan karena KBLI sebagai dasar imputasi lebi
 - Cek KBLI dan produksi perusahaan yang terindikasi bukan TPT.
 - Keluarkan yang kira-kira bukan TPT.
 - Update KBLI yang sudah dicek dengan imputasi dari sumber DPA yang dicek benar.
+- KBLI dasar untuk imputasi yang digunakan adalah KBLI STPIM dengan asumsi pemeriksaan STPIM berjalan dengan benar.
 
 ```{r}
 cek_kbli <- stpim_imptpt |> 
@@ -377,10 +409,14 @@ cek_kbli_nontpt <- c(311390007, 311390456, 311510118, 311810306, 312210019, 3213
 stpim_imptpt <- stpim_imptpt |>
   filter(!(kip %in% cek_kbli_nontpt))
 
-#Update KBLI STPIM hasil pengecekan dengan KBLI DPA
+#Update KBLI
 stpim_imptpt <- stpim_imptpt |>
+  #Update KBLI STPIM hasil pengecekan dengan KBLI DPA
   mutate(Disic5      = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), b2r217, Disic5),
-         kbli2_stpim = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim))
+         kbli2_stpim = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim)) |>
+  #Imputasi KBLI untuk KIP tanpa histori dengan KBLI dari DPA23
+  mutate(Disic5      = ifelse(is.na(kbli2_stpim), b2r217, Disic5),
+         kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))
 
 ```
 
@@ -388,15 +424,106 @@ Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilaku
 
 **Target imputasi sekarang menjadi: `r nrow(stpim_imptpt)` perusahaan.**
 
-```{r}
 
-# Menentukan kbli dasar untuk imputasi >> KBLI STPIM dengan asumsi pemeriksaan STPIM berjalan dengan benar.
-# Menentukan metod imputasi
+# Imputasi komponen biaya input
+
+Imputasi komponen biaya input dilakukan dengan pendekatan pertumbuhan komponen biaya input dari data tahun sebelumnya, dengan langkah-langkah sebagai berikut.
+
+- Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi per 2 digit KBLI. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik.
+
+```{r}
+stpim22_tpt <- stpim22 |>
+  filter(kbli2_stpim == 13 | kbli2_stpim == 14)
+
+stpim21_tpt <- stpim21 |>
+  filter(kbli2_stpim == 13 | kbli2_stpim == 14)
+
+#Mengelompokkan berdasarkan provinsi dan kbli2 
+sum_inp22 <- stpim22_tpt |>
+  group_by(Dprovi22, kbli2_stpim) |>
+  summarise(total_inp22 = sum(Iinput22, na.rm = TRUE), .groups = "drop") |>
+  mutate(prov_kbli2 = paste(Dprovi22, kbli2_stpim, sep = ""))
+
+sum_inp21 <- stpim21_tpt |>
+  group_by(Dprovi21, kbli2_stpim) |>
+  summarise(total_inp21 = sum(Iinput21, na.rm = TRUE), .groups = "drop") |>
+  mutate(prov_kbli2 = paste(Dprovi21, kbli2_stpim, sep = ""))
+
+
+#Menghitung pertumbuhan biaya input per provinsi dan kbli2
+sum_inp21 <- sum_inp21 |>
+  left_join(sum_inp22[,c("prov_kbli2", "total_inp22")], by = "prov_kbli2") |>
+  mutate(
+    grwt_inp = ifelse(
+      !is.na(total_inp21) & !is.na(total_inp22), 
+      (total_inp22 - total_inp21) / total_inp21 * 100, 
+      NA_real_
+    )
+  ) |>
+  arrange(grwt_inp)
+
+```
+
+```{r}
+#Barplot pertumbuhan input KBLI 13
+barplot_inp13 <- barplot(
+  sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp,  # y-axis data: grwt_inp for kbli2_stpim == 13
+  names.arg = sum_inp21[sum_inp21$kbli2_stpim == 13, ]$Dprovi21,  # x-axis labels: prov_kbli2 for kbli2_stpim == 13
+  main = "Pertumbuhan Input per Provinsi KBLI 13 (%)",
+  xlab = "Provinsi",
+  col = "maroon",
+  axes = FALSE
+)
+
+text(
+  x = barplot_inp13,  # x positions of the bars
+  y = sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp,  # y positions (the heights of the bars)
+  labels = round(sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp, 0), 
+  pos = 3,  # Position of the text (3 means above the bars)
+  col = "black",  # Text color
+  cex = 0.8  # Text size (adjust as needed)
+)
+
+#Barplot pertumbuhan input KBLI 14
+barplot_inp14 <- barplot(
+  sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp,  # y-axis data: grwt_inp for kbli2_stpim == 13
+  names.arg = sum_inp21[sum_inp21$kbli2_stpim == 14, ]$Dprovi21,  # x-axis labels: prov_kbli2 for kbli2_stpim == 13
+  main = "Pertumbuhan Input per Provinsi KBLI 14 (%)",
+  xlab = "Provinsi",
+  col = "maroon",
+  axes = FALSE
+)
+
+text(
+  x = barplot_inp14,  # x positions of the bars
+  y = sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp,  # y positions (the heights of the bars)
+  labels = round(sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp, 0), 
+  pos = 3,  # Position of the text (3 means above the bars)
+  col = "black",  # Text color
+  cex = 0.8  # Text size (adjust as needed)
+)
+
+```
+- Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan nasional.
+
+```{r}
+#Match pertumbuhan per provinsi dan KBLI dari data historis dengan target imputasi 2023
+tab_stpim_imptpt <- stpim_imptpt |>
+  group_by(prov, kbli2_stpim) |>
+  summarise(total_nimp = n(), .groups = "drop") |>
+  mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
+  left_join(sum_inp21[, c("prov_kbli2", "grwt_inp")], by = "prov_kbli2") |>
+  mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp))
+  
+```
+
+```{r}
+#- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per kbli per prov?
 
 target_imptpt
 
 ## variabel imputasi?
-## model apa imputasi? rasio? ml?
+## model apa imputasi? rasio >> sd input? ml >> output?
 ## tk : historis 22
 ## pengeluaran pekerja : historis 22
 ## total output : rasio/ml?
