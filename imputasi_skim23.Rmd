@@ -504,6 +504,7 @@ text(
 )
 
 ```
+
 - Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan nasional.
 
 ```{r}
