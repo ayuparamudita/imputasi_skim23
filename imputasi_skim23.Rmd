@@ -17,6 +17,7 @@ library(dplyr)
 library(knitr)
 library(writexl)
 library(tidyr)
+library(ggplot2)
 ```
 
 
@@ -465,47 +466,48 @@ sum_inp21 <- sum_inp21 |>
 ```
 
 ```{r}
-#Barplot pertumbuhan input KBLI 13
-barplot_inp13 <- barplot(
-  sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp,  # y-axis data: grwt_inp for kbli2_stpim == 13
-  names.arg = sum_inp21[sum_inp21$kbli2_stpim == 13, ]$Dprovi21,  # x-axis labels: prov_kbli2 for kbli2_stpim == 13
-  main = "Pertumbuhan Input per Provinsi KBLI 13 (%)",
-  xlab = "Provinsi",
-  col = "maroon",
-  axes = FALSE
-)
+#Filter data 
+sum_inp21_13 <- sum_inp21 |>
+  filter(kbli2_stpim == 13) |>
+  filter(!(is.na(grwt_inp)))
+         
+sum_inp21_14 <- sum_inp21 |>
+  filter(kbli2_stpim == 14) |>
+  filter(!(is.na(grwt_inp)))
+         
 
-text(
-  x = barplot_inp13,  # x positions of the bars
-  y = sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp,  # y positions (the heights of the bars)
-  labels = round(sum_inp21[sum_inp21$kbli2_stpim == 13, ]$grwt_inp, 0), 
-  pos = 3,  # Position of the text (3 means above the bars)
-  col = "black",  # Text color
-  cex = 0.8  # Text size (adjust as needed)
-)
+#Barplot pertumbuhan input KBLI 13
+ggplot(sum_inp21_13, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
+  geom_bar(stat = "identity", fill = "maroon") +
+  geom_text(aes(label = round(grwt_inp, 2)), # Add labels rounded to 2 decimal places
+            hjust = -0.1, # Adjust position to the left of the bars
+            size = 3.5,
+            colour = "gray") + # Adjust text size
+  labs(title = "Pertumbuhan Input KBLI 13 per Provinsi (%)",
+       x = "Provinsi",
+       y = "Pertumbuhan (%)") +
+  theme_minimal() +
+  coord_flip()  # Flips the axes for better readability
 
 #Barplot pertumbuhan input KBLI 14
-barplot_inp14 <- barplot(
-  sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp,  # y-axis data: grwt_inp for kbli2_stpim == 13
-  names.arg = sum_inp21[sum_inp21$kbli2_stpim == 14, ]$Dprovi21,  # x-axis labels: prov_kbli2 for kbli2_stpim == 13
-  main = "Pertumbuhan Input per Provinsi KBLI 14 (%)",
-  xlab = "Provinsi",
-  col = "maroon",
-  axes = FALSE
-)
+ggplot(sum_inp21_14, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
+  geom_bar(stat = "identity", fill = "maroon") +
+  geom_text(aes(label = round(grwt_inp, 2)), # Add labels rounded to 2 decimal places
+            hjust = -0.1, # Adjust position to the left of the bars
+            size = 3.5,
+            colour = "gray") + # Adjust text size
+  labs(title = "Pertumbuhan Input KBLI 14 per Provinsi (%)",
+       x = "Provinsi",
+       y = "Pertumbuhan (%)") +
+  theme_minimal() +
+  coord_flip()  # Flips the axes for better readability
 
-text(
-  x = barplot_inp14,  # x positions of the bars
-  y = sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp,  # y positions (the heights of the bars)
-  labels = round(sum_inp21[sum_inp21$kbli2_stpim == 14, ]$grwt_inp, 0), 
-  pos = 3,  # Position of the text (3 means above the bars)
-  col = "black",  # Text color
-  cex = 0.8  # Text size (adjust as needed)
-)
 
 ```
 
-- Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan nasional.
+- Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. 
+- Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan nasional.
+- Jika pertumbuhan biaya input terlalu ekstrem (kurang dari -40 persen s.d. lebih dari 400 persen), lakukan penyesuaian dengan men-setting range menjadi [-40 persen, 400 persen] (Provinsi Jateng pertumbuhannya -38, sehingga ditetapkan -40 agar mempertahankan fenomena TPT di provinsi dominan TPT).
 
 ```{r}
 #Match pertumbuhan per provinsi dan KBLI dari data historis dengan target imputasi 2023
@@ -514,12 +516,15 @@ tab_stpim_imptpt <- stpim_imptpt |>
   summarise(total_nimp = n(), .groups = "drop") |>
   mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
   left_join(sum_inp21[, c("prov_kbli2", "grwt_inp")], by = "prov_kbli2") |>
-  mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp))
-  
+  mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp)) |>   # Adjustment for missing history data
+  mutate(grwt_inp_imp = ifelse(grwt_inp_imp <= -40, -40, grwt_inp_imp)) |>
+  mutate(grwt_inp_imp = ifelse(grwt_inp_imp >= 400, 400, grwt_inp_imp))
+
 ```
 
 ```{r}
 #- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per kbli per prov?
+#- Komponen biaya input a.l.: bahan baku, BBM,     + listrik?
 
 target_imptpt
 
