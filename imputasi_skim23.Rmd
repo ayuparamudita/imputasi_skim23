@@ -430,7 +430,7 @@ Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilaku
 
 Imputasi komponen biaya input dilakukan dengan pendekatan pertumbuhan komponen biaya input dari data tahun sebelumnya, dengan langkah-langkah sebagai berikut.
 
-- Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi per 2 digit KBLI. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik.
+- Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi per 2 digit KBLI. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik di bawah.
 
 ```{r}
 stpim22_tpt <- stpim22 |>
@@ -516,25 +516,60 @@ tab_stpim_imptpt <- stpim_imptpt |>
   summarise(total_nimp = n(), .groups = "drop") |>
   mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
   left_join(sum_inp21[, c("prov_kbli2", "grwt_inp")], by = "prov_kbli2") |>
-  mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp)) |>   # Adjustment for missing history data
+  # Adjustment for missing history data
+  mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp)) |>  
+  # Adjustment for outlier growth
   mutate(grwt_inp_imp = ifelse(grwt_inp_imp <= -40, -40, grwt_inp_imp)) |>
   mutate(grwt_inp_imp = ifelse(grwt_inp_imp >= 400, 400, grwt_inp_imp))
 
 ```
 
+- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per KBLI2 per prov. Komponen biaya input yang diimputasi hanya terbatas, a.l. bahan baku dan penolong, bahan bakar, dan listrik?
+
 ```{r}
-#- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per kbli per prov?
-#- Komponen biaya input a.l.: bahan baku, BBM,     + listrik?
+
+var2221_inp <- c("kip",
+                 "Rdnvcu", "Rimvcu",                #bbakupen_dom #bbakupen_imp
+                 "Efuvcu", "Eplvcu", "Enpvcu"       #bbakar #listrik_pln #listrik_nonpln
+                 )     
+
+stpim_imptpt_trial <- stpim_imptpt |> 
+  #combine data historis input 2022 dan 2021 jadi satu dataset
+  left_join(
+    bind_rows(
+      stpim22_imptpt[var2221_inp] |> mutate(tahun = 2022),
+      stpim21_imptpt[var2221_inp] |> mutate(tahun = 2021)
+    )[var2221_inp], 
+    by = "kip") |>
+  mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
+  left_join(tab_stpim_imptpt[, c("prov_kbli2", "grwt_inp_imp")], by = "prov_kbli2") |>
+  #adjust dengan growth
+  mutate(r501k5_sum = Rdnvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_dom
+         r501k7_sum = Rimvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_imp
+         r303a      = Efuvcu * ((100 + grwt_inp_imp) / 100),              #bbakar
+         r304c      = (Eplvcu + Enpvcu) * ((100 + grwt_inp_imp) / 100)    #listrik
+  ) 
+
+#format numerik
+options(scipen = 999) 
+
+```
+
+```{r}
+#- imputasi no histori: mean tk = 20-99 per kbli2 per prov
+#- growth dipecah lagi dengan tk B(99+) dan S(20-99)
+
+
 
 target_imptpt
 
 ## variabel imputasi?
 ## model apa imputasi? rasio >> sd input? ml >> output?
-## tk : historis 22
-## pengeluaran pekerja : historis 22
+## tk : historis
+## pengeluaran pekerja : historis w/ adjustment
 ## total output : rasio/ml?
-## breakdown output : rasio komponen?
-## biaya input?
+## breakdown output 
+## biaya input : historis w/ adjustment growth input by kbli2 & prov
 
 ```
 
