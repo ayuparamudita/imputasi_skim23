@@ -430,30 +430,39 @@ Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilaku
 
 Imputasi komponen biaya input dilakukan dengan pendekatan pertumbuhan komponen biaya input dari data tahun sebelumnya, dengan langkah-langkah sebagai berikut.
 
-- Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi per 2 digit KBLI. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik di bawah.
+- Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi, per 2 digit KBLI, dan skala tenaga kerja. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik di bawah.
 
 ```{r}
 stpim22_tpt <- stpim22 |>
-  filter(kbli2_stpim == 13 | kbli2_stpim == 14)
+  filter(kbli2_stpim == 13 | kbli2_stpim == 14) |>
+  rowwise() |>  # Ensure operations are performed row-wise
+  mutate(skala_tk = sum(Lprnop22, Lprnon22, Lnpnop22, Lnpnon22, na.rm = TRUE)) |> 
+  mutate(skala_tk = ifelse(skala_tk > 99, "B", "S")) |> 
+  ungroup()  # Remove row-wise grouping for further operations
 
 stpim21_tpt <- stpim21 |>
-  filter(kbli2_stpim == 13 | kbli2_stpim == 14)
+  filter(kbli2_stpim == 13 | kbli2_stpim == 14) |>
+  rowwise() |>  # Ensure operations are performed row-wise
+  mutate(skala_tk = sum(Lprnol21, Lprnof21, Lnpnol21, Lnpnof21, na.rm = TRUE)) |> 
+  mutate(skala_tk = ifelse(skala_tk > 99, "B", "S")) |> 
+  ungroup()  # Remove row-wise grouping for further operations
+
 
 #Mengelompokkan berdasarkan provinsi dan kbli2 
 sum_inp22 <- stpim22_tpt |>
-  group_by(Dprovi22, kbli2_stpim) |>
+  group_by(Dprovi22, kbli2_stpim, skala_tk) |>
   summarise(total_inp22 = sum(Iinput22, na.rm = TRUE), .groups = "drop") |>
-  mutate(prov_kbli2 = paste(Dprovi22, kbli2_stpim, sep = ""))
+  mutate(prov_kbli2_skala = paste(Dprovi22, kbli2_stpim, skala_tk, sep = ""))
 
 sum_inp21 <- stpim21_tpt |>
-  group_by(Dprovi21, kbli2_stpim) |>
+  group_by(Dprovi21, kbli2_stpim, skala_tk) |>
   summarise(total_inp21 = sum(Iinput21, na.rm = TRUE), .groups = "drop") |>
-  mutate(prov_kbli2 = paste(Dprovi21, kbli2_stpim, sep = ""))
+  mutate(prov_kbli2_skala = paste(Dprovi21, kbli2_stpim, skala_tk, sep = ""))
 
 
 #Menghitung pertumbuhan biaya input per provinsi dan kbli2
 sum_inp21 <- sum_inp21 |>
-  left_join(sum_inp22[,c("prov_kbli2", "total_inp22")], by = "prov_kbli2") |>
+  left_join(sum_inp22[,c("prov_kbli2_skala", "total_inp22")], by = "prov_kbli2_skala") |>
   mutate(
     grwt_inp = ifelse(
       !is.na(total_inp21) & !is.na(total_inp22), 
@@ -478,45 +487,49 @@ sum_inp21_14 <- sum_inp21 |>
 
 #Barplot pertumbuhan input KBLI 13
 ggplot(sum_inp21_13, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
-  geom_bar(stat = "identity", fill = "maroon") +
-  geom_text(aes(label = round(grwt_inp, 2)), # Add labels rounded to 2 decimal places
-            hjust = -0.1, # Adjust position to the left of the bars
+  geom_bar(aes(fill = skala_tk), stat = "identity") +  # Fill color based on skala
+  geom_text(aes(label = round(grwt_inp, 0)),  
+            hjust = -0.1, 
             size = 3.5,
-            colour = "gray") + # Adjust text size
+            colour = "gray") +  
+  scale_fill_manual(values = c("B" = "navy", "S" = "maroon")) +  # Custom colors
   labs(title = "Pertumbuhan Input KBLI 13 per Provinsi (%)",
        x = "Provinsi",
        y = "Pertumbuhan (%)") +
   theme_minimal() +
-  coord_flip()  # Flips the axes for better readability
+  coord_flip()  # Flip for readability
+
 
 #Barplot pertumbuhan input KBLI 14
 ggplot(sum_inp21_14, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
-  geom_bar(stat = "identity", fill = "maroon") +
-  geom_text(aes(label = round(grwt_inp, 2)), # Add labels rounded to 2 decimal places
-            hjust = -0.1, # Adjust position to the left of the bars
+  geom_bar(aes(fill = skala_tk), stat = "identity") +  # Fill color based on skala
+  geom_text(aes(label = round(grwt_inp, 0)),  
+            hjust = -0.1, 
             size = 3.5,
-            colour = "gray") + # Adjust text size
+            colour = "gray") +  
+  scale_fill_manual(values = c("B" = "navy", "S" = "maroon")) +  # Custom colors
   labs(title = "Pertumbuhan Input KBLI 14 per Provinsi (%)",
        x = "Provinsi",
        y = "Pertumbuhan (%)") +
   theme_minimal() +
-  coord_flip()  # Flips the axes for better readability
+  coord_flip()  # Flip for readability
 
 
 ```
 
 - Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. 
-- Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan nasional.
-- Jika pertumbuhan biaya input terlalu ekstrem (kurang dari -40 persen s.d. lebih dari 400 persen), lakukan penyesuaian dengan men-setting range menjadi [-40 persen, 400 persen] (Provinsi Jateng pertumbuhannya -38, sehingga ditetapkan -40 agar mempertahankan fenomena TPT di provinsi dominan TPT).
+- Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan seluruh obesrvasi per provinsi kbli2 skala.
+- Jika pertumbuhan biaya input terlalu ekstrem (kurang dari -40 persen s.d. lebih dari 400 persen), lakukan penyesuaian dengan men-setting range menjadi [-40 persen, 400 persen] (Pertimbangan: Provinsi Jateng pertumbuhannya -39 persen, sehingga ditetapkan -40 persen sebagai batas agar dapat mempertahankan fenomena TPT di provinsi dominan TPT).
 
 ```{r}
 #Match pertumbuhan per provinsi dan KBLI dari data historis dengan target imputasi 2023
 tab_stpim_imptpt <- stpim_imptpt |>
-  group_by(prov, kbli2_stpim) |>
+  mutate(skala_tk = ifelse(r206a > 99, "B", "S")) |> 
+  group_by(prov, kbli2_stpim, skala_tk) |>
   summarise(total_nimp = n(), .groups = "drop") |>
-  mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
-  left_join(sum_inp21[, c("prov_kbli2", "grwt_inp")], by = "prov_kbli2") |>
-  # Adjustment for missing history data
+  mutate(prov_kbli2_skala = paste(prov, kbli2_stpim, skala_tk, sep = "")) |>
+  left_join(sum_inp21[, c("prov_kbli2_skala", "grwt_inp")], by = "prov_kbli2_skala") |>
+  # Adjustment for no history data
   mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp)) |>  
   # Adjustment for outlier growth
   mutate(grwt_inp_imp = ifelse(grwt_inp_imp <= -40, -40, grwt_inp_imp)) |>
@@ -533,7 +546,7 @@ var2221_inp <- c("kip",
                  "Efuvcu", "Eplvcu", "Enpvcu"       #bbakar #listrik_pln #listrik_nonpln
                  )     
 
-stpim_imptpt_trial <- stpim_imptpt |> 
+stpim_imptpt <- stpim_imptpt |> 
   #combine data historis input 2022 dan 2021 jadi satu dataset
   left_join(
     bind_rows(
@@ -541,8 +554,9 @@ stpim_imptpt_trial <- stpim_imptpt |>
       stpim21_imptpt[var2221_inp] |> mutate(tahun = 2021)
     )[var2221_inp], 
     by = "kip") |>
-  mutate(prov_kbli2 = paste(prov, kbli2_stpim, sep = "")) |>
-  left_join(tab_stpim_imptpt[, c("prov_kbli2", "grwt_inp_imp")], by = "prov_kbli2") |>
+  mutate(skala_tk = ifelse(r206a > 99, "B", "S"),
+         prov_kbli2_skala = paste(prov, kbli2_stpim, skala_tk, sep = "")) |>
+  left_join(tab_stpim_imptpt[, c("prov_kbli2_skala", "grwt_inp_imp")], by = "prov_kbli2_skala") |>
   #adjust dengan growth
   mutate(r501k5_sum = Rdnvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_dom
          r501k7_sum = Rimvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_imp
@@ -557,7 +571,6 @@ options(scipen = 999)
 
 ```{r}
 #- imputasi no histori: mean tk = 20-99 per kbli2 per prov
-#- growth dipecah lagi dengan tk B(99+) dan S(20-99)
 
 
 
