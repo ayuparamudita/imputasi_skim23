@@ -451,7 +451,9 @@ stpim21_tpt <- stpim21 |>
 #Mengelompokkan berdasarkan provinsi dan kbli2 
 sum_inp22 <- stpim22_tpt |>
   group_by(Dprovi22, kbli2_stpim, skala_tk) |>
-  summarise(total_inp22 = sum(Iinput22, na.rm = TRUE), .groups = "drop") |>
+  summarise(total_inp22 = sum(Iinput22, na.rm = TRUE), 
+            mean_inp22 = mean(Iinput22, na.rm = TRUE),        #mean input untuk imputasiobservasi yang no histori
+            .groups = "drop") |>
   mutate(prov_kbli2_skala = paste(Dprovi22, kbli2_stpim, skala_tk, sep = ""))
 
 sum_inp21 <- stpim21_tpt |>
@@ -518,11 +520,11 @@ ggplot(sum_inp21_14, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
 ```
 
 - Setelah didapatkan data histori pertumbuhan input 2022 terhadap 2021, match-kan dengan provinsi dan KBLI target imputasi 2023. 
-- Jika ada yang tidak memiliki histori pertumbuhan input, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan seluruh obesrvasi per provinsi kbli2 skala.
+- Jika ada yang tidak memiliki pertumbuhan input dikarenakan tidak adanya data histori, maka pendekatan dilakukan dengan melakukan imputasi pertumbuhan dengan median pertumbuhan seluruh observasi per provinsi kbli2 skala.
 - Jika pertumbuhan biaya input terlalu ekstrem (kurang dari -40 persen s.d. lebih dari 400 persen), lakukan penyesuaian dengan men-setting range menjadi [-40 persen, 400 persen] (Pertimbangan: Provinsi Jateng pertumbuhannya -39 persen, sehingga ditetapkan -40 persen sebagai batas agar dapat mempertahankan fenomena TPT di provinsi dominan TPT).
 
 ```{r}
-#Match pertumbuhan per provinsi dan KBLI dari data historis dengan target imputasi 2023
+#Match pertumbuhan per provinsi, KBLI, dan skala dari data historis dengan target imputasi 2023
 tab_stpim_imptpt <- stpim_imptpt |>
   mutate(skala_tk = ifelse(r206a > 99, "B", "S")) |> 
   group_by(prov, kbli2_stpim, skala_tk) |>
@@ -537,16 +539,15 @@ tab_stpim_imptpt <- stpim_imptpt |>
 
 ```
 
-- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per KBLI2 per prov. Komponen biaya input yang diimputasi hanya terbatas, a.l. bahan baku dan penolong, bahan bakar, dan listrik?
+- Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per KBLI2 per prov. Komponen biaya input yang diimputasi hanya terbatas, a.l. bahan baku dan penolong, bahan bakar, dan listrik.
 
 ```{r}
-
 var2221_inp <- c("kip",
                  "Rdnvcu", "Rimvcu",                #bbakupen_dom #bbakupen_imp
                  "Efuvcu", "Eplvcu", "Enpvcu"       #bbakar #listrik_pln #listrik_nonpln
                  )     
 
-stpim_imptpt <- stpim_imptpt |> 
+stpim_imptpt_input <- stpim_imptpt |> 
   #combine data historis input 2022 dan 2021 jadi satu dataset
   left_join(
     bind_rows(
@@ -561,29 +562,58 @@ stpim_imptpt <- stpim_imptpt |>
   mutate(r501k5_sum = Rdnvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_dom
          r501k7_sum = Rimvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_imp
          r303a      = Efuvcu * ((100 + grwt_inp_imp) / 100),              #bbakar
-         r304c      = (Eplvcu + Enpvcu) * ((100 + grwt_inp_imp) / 100)    #listrik
-  ) 
+         r304c      = (Eplvcu + Enpvcu) * ((100 + grwt_inp_imp) / 100),   #listrik
+         cek_input  = r501k5_sum + r501k7_sum + r303a + r304c
+  ) |>
+  select(tahun, kip, prov, kab, Disic5, kbli2_stpim, skala_tk, prov_kbli2_skala, 
+         grwt_inp_imp, r501k5_sum, r501k7_sum, r303a, r304c, cek_input)
 
 #format numerik
 options(scipen = 999) 
 
 ```
 
+- Imputasi no data histori (termasuk jika ada yang memiliki data histori tetapi total input 0): imputasi dilakukan dengan menggunakan nilai rata-rata input tahun 2022 menurut provinsi, kbli2, dan skala tk.
+
 ```{r}
-#- imputasi no histori: mean tk = 20-99 per kbli2 per prov
+#Match rata-rata input per provinsi, KBLI, dan skala dari data historis dengan target imputasi 2023
+tab_stpim_imptpt <- tab_stpim_imptpt |>
+  left_join(sum_inp22[, c("prov_kbli2_skala", "mean_inp22")], by = "prov_kbli2_skala") |>
+  # Adjustment untuk observasi yang tidak memiliki history data dengan nilai persentil-25 
+  # karena hanya ada 1 observasi NA dari provinsi Aceh
+  mutate(mean_inp22_imp = ifelse(is.na(mean_inp22), quantile(mean_inp22, probs = 0.25, na.rm = TRUE), mean_inp22))
+  
+#Ceplokkan ke dataset stpim_imptpt_input
+stpim_imptpt_input <- stpim_imptpt_input |>
+  left_join(tab_stpim_imptpt |> select(prov_kbli2_skala, mean_inp22_imp), by = "prov_kbli2_skala") |>
+  mutate(r501k5_sum = ifelse((is.na(cek_input) | cek_input == 0), mean_inp22_imp, r501k5_sum)) |>
+  mutate(across(c(r501k5_sum, r501k7_sum, r303a, r304c), ~ replace_na(.x, 0)),
+         cek_input  = r501k5_sum + r501k7_sum + r303a + r304c)
 
+#Jadikan satu dengan main dataset
+stpim_imptpt <- stpim_imptpt |>
+  left_join(stpim_imptpt_input |> 
+              select(kip, r501k5_sum, r501k7_sum, r303a, r304c), by = "kip")
+  
 
+```
+
+  
+```{r}
 
 target_imptpt
 
 ## variabel imputasi?
 ## model apa imputasi? rasio >> sd input? ml >> output?
+
 ## tk : historis
-## pengeluaran pekerja : historis w/ adjustment
+## pengeluaran pekerja : historis w/ adjustment growth avg UMP
+
+## biaya input : historis w/ adjustment growth input by kbli2 & prov & skala tk
+## breakdown input: bb dom, bb impor, bbakar, listrik
+
 ## total output : rasio/ml?
 ## breakdown output 
-## biaya input : historis w/ adjustment growth input by kbli2 & prov
-
 ```
 
 
