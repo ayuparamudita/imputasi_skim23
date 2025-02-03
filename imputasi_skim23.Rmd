@@ -18,6 +18,9 @@ library(knitr)
 library(writexl)
 library(tidyr)
 library(ggplot2)
+
+#package untuk machine learning
+library(caret)
 ```
 
 
@@ -430,6 +433,8 @@ Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilaku
 
 Imputasi komponen biaya input dilakukan dengan pendekatan pertumbuhan komponen biaya input dari data tahun sebelumnya, dengan langkah-langkah sebagai berikut.
 
+## Menghitung pertumbuhan biaya input sebagai adjustment imputasi
+
 - Menghitung pertumbuhan biaya input 2022 terhadap 2021 per provinsi, per 2 digit KBLI, dan skala tenaga kerja. Variasi pertumbuhan biaya input pada KBLI 13 maupun 14 sangat heterogen antarprovinsi seperti yang ditunjukkan oleh Grafik di bawah.
 
 ```{r}
@@ -539,6 +544,8 @@ tab_stpim_imptpt <- stpim_imptpt |>
 
 ```
 
+## Mengimputasi komposisi biaya input
+
 - Melakukan imputasi komposisi biaya input dengan adjustment pertumbuhan biaya input 22-21 per KBLI2 per prov. Komponen biaya input yang diimputasi hanya terbatas, a.l. bahan baku dan penolong, bahan bakar, dan listrik.
 
 ```{r}
@@ -588,18 +595,116 @@ stpim_imptpt_input <- stpim_imptpt_input |>
   left_join(tab_stpim_imptpt |> select(prov_kbli2_skala, mean_inp22_imp), by = "prov_kbli2_skala") |>
   mutate(r501k5_sum = ifelse((is.na(cek_input) | cek_input == 0), mean_inp22_imp, r501k5_sum)) |>
   mutate(across(c(r501k5_sum, r501k7_sum, r303a, r304c), ~ replace_na(.x, 0)),
-         cek_input  = r501k5_sum + r501k7_sum + r303a + r304c)
+         input  = r501k5_sum + r501k7_sum + r303a + r304c)
 
 #Jadikan satu dengan main dataset
 stpim_imptpt <- stpim_imptpt |>
   left_join(stpim_imptpt_input |> 
-              select(kip, r501k5_sum, r501k7_sum, r303a, r304c), by = "kip")
+              select(kip, r501k5_sum, r501k7_sum, r303a, r304c, input), by = "kip")
   
 
 ```
 
-  
+# Imputasi output
+
+Imputasi output dilakukan dengan machine learning dengan langkah:
+
+- Training data dan menentukan model
+- Imputasi data output dengan model terpilih
+
+## Data preparation
+
+Data yang digunakan untuk data training adalah data 2022. 
+Sementara variabel yang digunakan untuk mengestimasi output a.l.: provinsi, kbli2, bulan operasi, tenaga kerja, dan input.
+
 ```{r}
+# Menyiapkan data 2022 sebagai data dasar untuk modeling
+stpim22_tpt_ml <- stpim22_tpt |>
+  select(Kipb, Dprovi22, Disic522, Year, Output22, Iinput22, Lprnop22, Lprnon22, Lnpnop22, Lnpnon22) |>
+  mutate(kbli2_stpim = substr(Disic522, 1, 2),
+         r206a       = rowSums(across(c("Lprnop22", "Lprnon22",                       #tk_prod
+                                        "Lnpnop22", "Lnpnon22")), na.rm = TRUE)) |>   #tk_lain
+  rename(kip    = Kipb,
+         prov   = Dprovi22,
+         r203   = Year,
+         output = Output22,
+         input  = Iinput22) |>
+  select(kip, prov, kbli2_stpim, r203, r206a, output, input)
+
+# Cleaning data karena masih ada data tidak wajar: input 0
+stpim22_tpt_ml <- stpim22_tpt_ml |>
+  filter(input > 0)
+
+# Melihat pola data >> menyingkirkan outlier
+ggplot(stpim22_tpt_ml, aes(x = input, y = output, color = as.factor(kbli2_stpim))) +
+  geom_point(alpha = 0.7) +  # Scatter points with transparency
+  labs(
+    title = "Scatter Plot of Output vs Input by KBLI2",
+    x = "Input",
+    y = "Output",
+    color = "KBLI2"
+  ) +
+  theme_minimal()
+
+```
+
+Terlihat sebaran data masih ada outlier di mana input sangat kecil, tetapi output sangat tinggi. Setelah dicek, KIP 331411444 merupakan perusahaan maklun di mana nilai input berasal dari listrik dan lainnya, tanpa nilai bahan baku.
+
+## Data split 
+
+Dataset 2022 dibagi menjadi 2 : training (80 persen) dan testing (20 persen).
+
+```{r}
+# Split data training and testing
+set.seed(88)
+trainIndex <- createDataPartition(stpim22_tpt_ml$output, p = 0.8, list = FALSE, times = 1)
+
+train_data <- stpim22_tpt_ml[trainIndex,] |>
+  select(-kip)
+validation_data  <- stpim22_tpt_ml[-trainIndex,] |>
+  select(-kip)
+
+```
+
+## Data training 
+
+```{r}
+#Data upah masuk ga karena data input tidak termasuk upah
+
+
+#knn_fit <- train(Output21 ~ . ,
+#                 data = train_data,
+#                 method = "knn",
+#                 preProc = c("center", "scale"), #standardize
+#                 tuneGrid		= data.frame(.k = seq(from = 1, to = (ncol(train_data) - 1), by = 5)),  # Decide k parameter!
+#                 trControl		= trainControl(method = "cv")
+#                 )
+#knn_fit
+#plot(knn_fit)
+
+#knn_preds <- predict(knn_fit, validation_data)
+#rmse(actual = validation_data$Output21, predicted = knn_preds)
+
+
+
+# Training RF
+#set.seed(777)
+#rf_fit <- train(Output21 ~ . ,
+#                data = train_data,
+#                method = "rf",
+#                tuneGrid		= data.frame(mtry = seq(from = 1, to = (ncol(train_data) - 1), by = 10)),
+#                ntree = 100,   # Decide ntree!!
+#                importance	= TRUE,
+#                trControl		= trainControl(method = "cv")
+#                )
+#rf_fit
+
+#rf_preds <- predict(rf_fit, validation_data)
+#rmse(actual = validation_data$Output21, predicted = rf_preds)
+
+
+
+
 
 target_imptpt
 
@@ -613,7 +718,7 @@ target_imptpt
 ## breakdown input: bb dom, bb impor, bbakar, listrik
 
 ## total output : rasio/ml?
-## breakdown output 
+## breakdown output ??
 ```
 
 
