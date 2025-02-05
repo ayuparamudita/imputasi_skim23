@@ -21,6 +21,8 @@ library(ggplot2)
 
 #package untuk machine learning
 library(caret)
+library(Metrics)
+library(randomForest)
 ```
 
 
@@ -648,7 +650,9 @@ ggplot(stpim22_tpt_ml, aes(x = input, y = output, color = as.factor(kbli2_stpim)
 
 ```
 
-Terlihat sebaran data masih ada outlier di mana input sangat kecil, tetapi output sangat tinggi. Setelah dicek, KIP 331411444 merupakan perusahaan maklun di mana nilai input berasal dari listrik dan lainnya, tanpa nilai bahan baku.
+Terlihat sebaran data masih ada outlier di mana input sangat kecil, tetapi output sangat tinggi. 
+
+Catatan: Setelah dicek, KIP 331411444 (titik biru pojok kiri atas) merupakan perusahaan maklun di mana nilai input berasal dari listrik dan lainnya, tanpa nilai bahan baku.
 
 ## Data split 
 
@@ -656,7 +660,7 @@ Dataset 2022 dibagi menjadi 2 : training (80 persen) dan testing (20 persen).
 
 ```{r}
 # Split data training and testing
-set.seed(88)
+set.seed(888)
 trainIndex <- createDataPartition(stpim22_tpt_ml$output, p = 0.8, list = FALSE, times = 1)
 
 train_data <- stpim22_tpt_ml[trainIndex,] |>
@@ -669,44 +673,48 @@ validation_data  <- stpim22_tpt_ml[-trainIndex,] |>
 ## Data training 
 
 ```{r}
+# Model KNN
+set.seed(6789)
+knn_fit <- train(output ~ . ,
+                 data = train_data,
+                 method = "knn",
+                 preProc = c("center", "scale"), #standardize
+                 # Decide k parameter!
+                 tuneGrid		= data.frame(.k = seq(from = 1, to = (ncol(train_data) - 1), by = 1)),  
+                 trControl		= trainControl(method = "cv")
+                 )
+knn_fit
+plot(knn_fit)
+
+knn_preds <- predict(knn_fit, validation_data)
+rmse(actual = validation_data$output, predicted = knn_preds)
+# 272 839 740
+
+# ceplok data yang mau diimputasi
+knn_preds_stpimtpt <- predict(knn_fit, stpim_imptpt[c("prov", "kbli2_stpim", "r203", "r206a", "input")])
+rmse(actual = stpim_imptpt$output, predicted = knn_preds_stpimtpt)
+
+#isu di data training & testing tidak ada provinsi 11 
+
+# Model RF
+set.seed(6789)
+rf_fit <- train(output ~ . ,
+                data = train_data,
+                method = "rf",
+                tuneGrid		= data.frame(mtry = seq(from = 1, to = (ncol(train_data) - 1), by = 1)),
+                ntree = 100,   # Decide ntree!!
+                importance	= TRUE,
+                trControl		= trainControl(method = "cv")
+                )
+rf_fit
+
+rf_preds <- predict(rf_fit, validation_data)
+rmse(actual = validation_data$output, predicted = rf_preds)
+# 293 117 167
+
+
 #Data upah masuk ga karena data input tidak termasuk upah
 
-
-#knn_fit <- train(Output21 ~ . ,
-#                 data = train_data,
-#                 method = "knn",
-#                 preProc = c("center", "scale"), #standardize
-#                 tuneGrid		= data.frame(.k = seq(from = 1, to = (ncol(train_data) - 1), by = 5)),  # Decide k parameter!
-#                 trControl		= trainControl(method = "cv")
-#                 )
-#knn_fit
-#plot(knn_fit)
-
-#knn_preds <- predict(knn_fit, validation_data)
-#rmse(actual = validation_data$Output21, predicted = knn_preds)
-
-
-
-# Training RF
-#set.seed(777)
-#rf_fit <- train(Output21 ~ . ,
-#                data = train_data,
-#                method = "rf",
-#                tuneGrid		= data.frame(mtry = seq(from = 1, to = (ncol(train_data) - 1), by = 10)),
-#                ntree = 100,   # Decide ntree!!
-#                importance	= TRUE,
-#                trControl		= trainControl(method = "cv")
-#                )
-#rf_fit
-
-#rf_preds <- predict(rf_fit, validation_data)
-#rmse(actual = validation_data$Output21, predicted = rf_preds)
-
-
-
-
-
-target_imptpt
 
 ## variabel imputasi?
 ## model apa imputasi? rasio >> sd input? ml >> output?
