@@ -375,7 +375,9 @@ stpim_imptpt <- stpim22_imptpt |>
   select(-b2r217.x) |>
   rename(b2r217 = b2r217.y) |> 
   mutate(kbli2_dpa23 = substr(b2r217, 1, 2),
-         kbli2_stpim = substr(Disic5, 1, 2))
+         kbli2_stpim = substr(Disic5, 1, 2)) |>
+  # Imputasi bulan operasi karena ada NA
+  mutate(r203 = ifelse(is.na(r203), median(r203, na.rm = TRUE), r203))
 
 ```
 
@@ -592,7 +594,7 @@ tab_stpim_imptpt <- tab_stpim_imptpt |>
   # karena hanya ada 1 observasi NA dari provinsi Aceh
   mutate(mean_inp22_imp = ifelse(is.na(mean_inp22), quantile(mean_inp22, probs = 0.25, na.rm = TRUE), mean_inp22))
   
-#Ceplokkan ke dataset stpim_imptpt_input
+#Ceplokan ke dataset stpim_imptpt_input
 stpim_imptpt_input <- stpim_imptpt_input |>
   left_join(tab_stpim_imptpt |> select(prov_kbli2_skala, mean_inp22_imp), by = "prov_kbli2_skala") |>
   mutate(r501k5_sum = ifelse((is.na(cek_input) | cek_input == 0), mean_inp22_imp, r501k5_sum)) |>
@@ -617,21 +619,25 @@ Imputasi output dilakukan dengan machine learning dengan langkah:
 ## Data preparation
 
 Data yang digunakan untuk data training adalah data 2022. 
-Sementara variabel yang digunakan untuk mengestimasi output a.l.: provinsi, kbli2, bulan operasi, tenaga kerja, dan input.
+Sementara variabel yang digunakan untuk mengestimasi output a.l.: provinsi, kbli2, bulan operasi, tenaga kerja, upah, dan input.
 
 ```{r}
 # Menyiapkan data 2022 sebagai data dasar untuk modeling
 stpim22_tpt_ml <- stpim22_tpt |>
-  select(Kipb, Dprovi22, Disic522, Year, Output22, Iinput22, Lprnop22, Lprnon22, Lnpnop22, Lnpnon22) |>
+  select(Kipb, Dprovi22, Disic522, Year, Output22, Iinput22, 
+         Lprnop22, Lprnon22, Lnpnop22, Lnpnon22, 
+         Zptvcu22, Zprvcu22, Zntvcu22, Znrvcu22) |>
   mutate(kbli2_stpim = substr(Disic522, 1, 2),
          r206a       = rowSums(across(c("Lprnop22", "Lprnon22",                       #tk_prod
-                                        "Lnpnop22", "Lnpnon22")), na.rm = TRUE)) |>   #tk_lain
+                                        "Lnpnop22", "Lnpnon22")), na.rm = TRUE),      #tk_lain
+         r301c       = rowSums(across(c("Zptvcu22", "Zprvcu22",       #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+                                        "Zntvcu22", "Znrvcu22")))) |> #pengpek_lain = upah_tklain + pengpeklain_tklain
   rename(kip    = Kipb,
          prov   = Dprovi22,
          r203   = Year,
          output = Output22,
          input  = Iinput22) |>
-  select(kip, prov, kbli2_stpim, r203, r206a, output, input)
+  select(kip, prov, kbli2_stpim, r203, r206a, r301c, output, input)
 
 # Cleaning data karena masih ada data tidak wajar: input 0
 stpim22_tpt_ml <- stpim22_tpt_ml |>
@@ -672,6 +678,8 @@ validation_data  <- stpim22_tpt_ml[-trainIndex,] |>
 
 ## Data training 
 
+Data training dilakukan dengan 2 model: K-Nearest Neighbour (KNN) dan random forest (RF). Melalui training data, didapatkan model RF dapat mengestimasi lebih baik dibandingkan KNN. Hal ini ditunjukkan oleh nilai RMSE yang lebih rendah. Meski demikian, model KNN akan tetap digunakan sebagai model alternatif untuk mengatasi kasus tertentu yang tidak dapat diatasi dengan model RF.
+
 ```{r}
 # Model KNN
 set.seed(6789)
@@ -688,13 +696,7 @@ plot(knn_fit)
 
 knn_preds <- predict(knn_fit, validation_data)
 rmse(actual = validation_data$output, predicted = knn_preds)
-# 272 839 740
 
-# ceplok data yang mau diimputasi
-knn_preds_stpimtpt <- predict(knn_fit, stpim_imptpt[c("prov", "kbli2_stpim", "r203", "r206a", "input")])
-rmse(actual = stpim_imptpt$output, predicted = knn_preds_stpimtpt)
-
-#isu di data training & testing tidak ada provinsi 11 
 
 # Model RF
 set.seed(6789)
@@ -710,10 +712,92 @@ rf_fit
 
 rf_preds <- predict(rf_fit, validation_data)
 rmse(actual = validation_data$output, predicted = rf_preds)
-# 293 117 167
+
+```
+
+## Output imputation
+
+- Menyiapkan data 2023 untuk imputasi.
+
+Setelah mencoba untuk mengimputasi output menggunakan model yang telah di-training, muncul isu tidak adanya data dasar kbli 13 di provinsi 11 pada data training. Solusi, imputasi 1 observasi di provinsi 11 didekati dengan provinsi dengan karakteristik industri tekstil yang serupa (tenaga kerja mikro) yaitu provinsi 13.
+
+```{r}
+# Modifikasi data agar dapat diterapkan model machine learning
+stpim_imptpt_output <- stpim_imptpt |>
+  select(kip, prov, kbli2_stpim, r203, r206a, r301c, input) |>
+  mutate(prov = ifelse(prov == 11, 13, prov)) 
+
+```
+
+- Mengimputasi data dengan model yang telah ditraining (machine learning).
+- Mengecek nilai tambah.
+
+Ada kasus di mana imputasi dengan model RF menghasilkan nilai tambah negatif. Maka dari itu, adjustment dilakukan dengan menggunakan model alternatif KNN untuk perusahaan yang nilai tambahnya negatif dengan model RF.
+
+- Mengecek kewajaran nilai tambah dan upah.
+
+Ditemukan kasus di mana nilai tambah lebih kecil daripada upah. Maka dari itu, adjustment dilakukan dengan imputasi menggunakan rasio rata-rata output (dari hasil machine learning), tenaga kerja, dan input.
+
+```{r}
+# Imputasi output 2023
+stpim_imptpt_output <- stpim_imptpt_output |>
+  mutate(output_knn = predict(knn_fit, stpim_imptpt_output),
+         ntb_knn    = output_knn - input,
+         output_rf  = predict(rf_fit, stpim_imptpt_output),
+         ntb_rf     = output_rf - input) |>
+  #replace ntb_rf negatif dengan ntb_knn positif
+  mutate(output = ifelse(ntb_rf < 0, output_knn, output_rf),
+         ntb    = output - input) |>
+  #cek ntb dengan upah 
+  mutate(cek_ntbupah = ntb - r301c) |>
+  # >> masih ada yang ntb<upah
+  #ambil max output untuk ntb<upah 
+  mutate(output = ifelse((cek_ntbupah < 0), pmax(output_knn, output_rf), output)) |>
+  mutate(ntb    = output - input,
+         cek_ntbupah = ntb - r301c)
+  #>> masih ada yang ntb<upah
+
+#menghitung rata-rata tk, input, dan output data estimasi hasil machine learning
+stpim_imptpt_output_rasio <- stpim_imptpt_output |>
+  filter(cek_ntbupah > 0) |>
+  group_by(kbli2_stpim, prov) |>
+  summarise(avg_tk     = mean(r206a, na.rm = TRUE),
+            avg_input  = mean(input, na.rm = TRUE),
+            avg_output = mean(output, na.rm = TRUE))
+
+#mengecek kewajaran observasi yang ntb<upah
+stpim_imptpt_output_nonwjr <- stpim_imptpt_output |>
+  filter(cek_ntbupah < 0) |>
+  left_join(stpim_imptpt_output_rasio, by = c("prov", "kbli2_stpim")) |>
+  #coba rasio output-tk
+  mutate(output_rasio = avg_output/avg_tk * r206a,
+         ntb_rasio    = output_rasio - input,
+         cek_ntbupah = ntb_rasio - r301c) |>
+  #>> masih ada yang ntb negatif dan ntb<upah, maka adjustment rasio dari rasio output-input
+  mutate(output_rasio = avg_output/avg_input * input,
+         ntb_rasio    = output_rasio - input,
+         cek_ntbupah  = ntb_rasio - r301c)
+
+#jadikan satu ke dataset output
+stpim_imptpt_output <- stpim_imptpt_output |>
+  left_join(stpim_imptpt_output_nonwjr |> 
+              select(kip, output_rasio), by = "kip") |>
+  mutate(output      = ifelse(cek_ntbupah < 0, output_rasio, output),
+         ntb         = output - input,
+         cek_ntbupah = ntb - r301c) |>
+  select(-output_rasio)
 
 
-#Data upah masuk ga karena data input tidak termasuk upah
+#Jadikan satu dengan main dataset
+stpim_imptpt <- stpim_imptpt |>
+  left_join(stpim_imptpt_output |> 
+              select(kip, output, ntb), by = "kip")
+
+  
+
+#cek nama variabel produksi
+#cek r201_kode apa?
+
 
 
 ## variabel imputasi?
