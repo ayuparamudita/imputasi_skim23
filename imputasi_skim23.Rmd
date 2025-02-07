@@ -152,7 +152,7 @@ Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, dokume
 
 `r list_stpim23_tpt`
 
-**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
+**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sementara sebesar : `r total_tpt23`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
 
 
 # Imputasi tenaga kerja dan upah
@@ -242,13 +242,8 @@ var22 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
         
          # Komposisi Biaya INPUT
          #  "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
-        #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
-        #   "Ibrvcu", #sewagdg
-        #   "Ilrvcu", "Itxvcu", "Iinvcu", "Icovcu", "Idevcu", "Iprvcu", #sewatnh #pajak #bunga #hibah #deviden #premi
-        #   "Ipkvcu", "Irdvcu", "Iklvcu", "Ikdvcu",  #kemasan #rnd #haki_dom #haki_ln
-        #   "Iislov", #Iisfov, #peng_maklun_dom #peng_maklun_ln
-        #   "Iuwvcu", "Iotvcu" #air #peng_lainlain
-        #   )
+         #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
+
 
 var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
         # TK dan Upah
@@ -262,17 +257,13 @@ var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
            "Zntvcu", "Znevcu", "Znhvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
            "Zpdvcu", #pengpek_prod
            "Zndvcu") #pengpek_lain
+      
         # Komposisi Biaya INPUT
         #   "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
         #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
-        #   "Ibrvcu", #sewagdg
-        #   "Ilrvcu", "Itxvcu", "Iinvcu", "Icovcu", "Idevcu", "Iprvcu", #sewatnh #pajak #bunga #hibah #deviden #premi
-        #   "Ipkvcu", "Irdvcu", "Iklvcu", "Ikdvcu",  #kemasan #rnd #haki_dom #haki_ln
-        #   "Iislov", #Iisfov, #peng_maklun_dom #peng_maklun_ln
-        #   "Iuwvcu", "Iotvcu" #air #peng_lainlain
-        #   )
 
-varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2r217",
+
+varskim23 <- c("tahun", "kip", "prov", "kab", "r203", "Disic5", "b2r217",
           # TK dan Upah
                "r206b_1", #tk_laki
                "r206b_2", #tk_perem
@@ -283,19 +274,15 @@ varskim23 <- c("tahun", "kip", "prov", "kab", "r201_kode", "r203", "Disic5", "b2
                "r301a_1", "r301a_2", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
                "r301b_1", "r301b_2", #pengpek_lain = upah_tklain + pengpeklain_tklain
                "r301c") #total_upah
+          
           # Komposisi Biaya INPUT
-         #      "r501k5_sum", "r501k7_sum", #bbakupen_dom #bbakupen_imp
-        #       "r303a", "r304c", #bbakar #listrik
-        #       "r305a", #sewagdg 
-        #       "r305b", "r306", "r307", "r308", "r309", "r310", #sewatnh #pajak #bunga #hibah #deviden #premi
-        #       "r311", #peng_maklun
-        #       "r312", "r313" #air #peng_lainlain
-        #       )
+          #      "r501k5_sum", "r501k7_sum", #bbakupen_dom #bbakupen_imp
+          #       "r303a", "r304c", #bbakar #listrik
+       
 
 # Sync variabel dan nama var ke SKIM23 & Imputasi TK dan Pengeluaran Pekerja
 stpim22_imptpt <- stpim22_imptpt |>
   mutate(tahun   = 2022,
-         r201_kode = NA,
          b2r217    = NA,
          r206b_1 = rowSums(across(c("Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon")), na.rm = TRUE),  #tk_laki
          r206b_2 = rowSums(across(c("Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon")), na.rm = TRUE), #tk_perem
@@ -316,7 +303,6 @@ stpim22_imptpt <- stpim22_imptpt |>
 
 stpim21_imptpt <- stpim21_imptpt |>
   mutate(tahun = 2021,
-         r201_kode = NA,
          b2r217    = NA,
          r206b_1 = rowSums(across(c("Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", 
                                     "Pttlpi", "Pttlpa", "Pttlni", "Pttlna")), na.rm = TRUE),  #tk_laki
@@ -357,7 +343,6 @@ sisa_target21 <- sisa_target21 |>
          r301b_1 =  0, #upah_tklain
          r301b_2 =  0, #pengpeklain_tklain
          r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
-         r201_kode = NA,
          b2r217    = NA,
          Disic5    = NA
          )
@@ -426,12 +411,16 @@ stpim_imptpt <- stpim_imptpt |>
   mutate(Disic5      = ifelse(is.na(kbli2_stpim), b2r217, Disic5),
          kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))
 
+#Populasi TPT
+total_tpt23n <- nrow(stpim23_tpt) + nrow(stpim_imptpt) + nrow(skim23)
+
 ```
 
 Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan pengecekan, `r length(cek_kbli_nontpt)` KIP dieliminasi karena bukan industri TPT.
 
 **Target imputasi sekarang menjadi: `r nrow(stpim_imptpt)` perusahaan.**
 
+**Jadi populasi usaha TPT 2023 (cakupan SKIM23) menjadi `r total_tpt23n`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(stpim_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
 
 # Imputasi komponen biaya input
 
@@ -664,7 +653,7 @@ Catatan: Setelah dicek, KIP 331411444 (titik biru pojok kiri atas) merupakan per
 
 Dataset 2022 dibagi menjadi 2 : training (80 persen) dan testing (20 persen).
 
-```{r}
+```{r, warning = FALSE}
 # Split data training and testing
 set.seed(888)
 trainIndex <- createDataPartition(stpim22_tpt_ml$output, p = 0.8, list = FALSE, times = 1)
@@ -778,7 +767,7 @@ stpim_imptpt_output_nonwjr <- stpim_imptpt_output |>
          ntb_rasio    = output_rasio - input,
          cek_ntbupah  = ntb_rasio - r301c)
 
-#jadikan satu ke dataset output
+#Jadikan satu ke dataset output
 stpim_imptpt_output <- stpim_imptpt_output |>
   left_join(stpim_imptpt_output_nonwjr |> 
               select(kip, output_rasio), by = "kip") |>
@@ -787,30 +776,63 @@ stpim_imptpt_output <- stpim_imptpt_output |>
          cek_ntbupah = ntb - r301c) |>
   select(-output_rasio)
 
+```
 
+- Mengkompile data imputasi final
+
+Data final imputasi sudah didapatkan namun dengan beberapa catatan, a.l:
+  - Nama komoditas produksi (r504a) ada yang belum terisi karena tidak adanya data historis. 
+  - Ada beberapa nama komoditas yang tidak relevan dengan TPT perlu pengecekan lebih lanjut.
+
+```{r}
 #Jadikan satu dengan main dataset
 stpim_imptpt <- stpim_imptpt |>
   left_join(stpim_imptpt_output |> 
-              select(kip, output, ntb), by = "kip")
+              select(kip, output, ntb), by = "kip") |>
+  #menyesuaikan nama variabel dengan SKIM23
+  rename(r503k6_sum = output,
+         r201_kode  = Disic5)
 
-  
+#Tambahkan variabel produksi
+stpim_imptpt <- stpim_imptpt |>
+  left_join(stpim22_tpt |>
+              select(Kipb, Produksi), by = c("kip" = "Kipb")) |>
+  rename(Produksi22 = Produksi) |>
+  left_join(stpim21_tpt |>
+              select(Kipb, Produksi), by = c("kip" = "Kipb")) |>
+  rename(Produksi21 = Produksi) |>
+  mutate(r504a = ifelse(is.na(Produksi22), Produksi21, Produksi22)) |>
+  mutate(r504a = toupper(as.character(r504a)))
 
-#cek nama variabel produksi
-#cek r201_kode apa?
+#Select variabel utama
+skim23_imptpt <- stpim_imptpt |>
+  select(kip, prov, kab, r203, r201_kode,
+         r206a, r206b_1, r206b_2, r206c_1, r206c_2, r206d,   #tk
+         r301a_1, r301a_2, r301b_1, r301b_2, r301c,          #pengeluaran pekerja
+         r303a, r304c,                                       #bahan bakar #listrik
+         r501k5_sum, r501k7_sum,                             #bahan baku penolong domestik #bahan baku penolong impor
+         r503k6_sum,                                         #produksi barang
+         r504a,                                              #nama komoditas produksi
+         input, ntb)
+
+write_xlsx(skim23_imptpt, "skim23_imptpt.xlsx")
+
+```
 
 
+```{r}
 
-## variabel imputasi?
-## model apa imputasi? rasio >> sd input? ml >> output?
+## variabel imputasi
+## model apa imputasi: rasio >> sd input? ml >> output?
 
+## bulan operasional: historis
 ## tk : historis
 ## pengeluaran pekerja : historis w/ adjustment growth avg UMP
 
 ## biaya input : historis w/ adjustment growth input by kbli2 & prov & skala tk
 ## breakdown input: bb dom, bb impor, bbakar, listrik
 
-## total output : rasio/ml?
-## breakdown output ??
+## total output : ml
 ```
 
 

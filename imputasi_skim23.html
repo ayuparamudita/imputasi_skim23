@@ -11,7 +11,7 @@
 
 <meta name="author" content="Ayu Paramudita" />
 
-<meta name="date" content="2025-02-06" />
+<meta name="date" content="2025-02-07" />
 
 <title>Imputasi SKIM23</title>
 
@@ -352,7 +352,7 @@ display: none;
 
 <h1 class="title toc-ignore">Imputasi SKIM23</h1>
 <h4 class="author">Ayu Paramudita</h4>
-<h4 class="date">2025-02-06</h4>
+<h4 class="date">2025-02-07</h4>
 
 </div>
 
@@ -554,8 +554,9 @@ a.l.:</p>
 732210017, 733290007, 321391822, 331312099, 311412926, 321072348,
 331810293, 353290376, 311390455, 331810302, 322592355, 343230012,
 341390028, 331510090</p>
-<p><strong>Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar :
-4373</strong> (44 STPIM23 TPT + 1016 Target Imputasi + 3313 SKIM23).</p>
+<p><strong>Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sementara
+sebesar : 4373</strong> (44 STPIM23 TPT + 1016 Target Imputasi + 3313
+SKIM23).</p>
 </div>
 </div>
 <div id="imputasi-tenaga-kerja-dan-upah" class="section level1">
@@ -650,13 +651,8 @@ var22 &lt;- c(&quot;Kipb&quot;, &quot;Dprovi&quot;, &quot;Dkabup&quot;, &quot;Di
         
          # Komposisi Biaya INPUT
          #  &quot;Rdnvcu&quot;, &quot;Rimvcu&quot;, #bbakupen_dom #bbakupen_imp
-        #   &quot;Efuvcu&quot;, &quot;Eplvcu&quot;, &quot;Enpvcu&quot;, #bbakar #listrik_pln #listrik_nonpln
-        #   &quot;Ibrvcu&quot;, #sewagdg
-        #   &quot;Ilrvcu&quot;, &quot;Itxvcu&quot;, &quot;Iinvcu&quot;, &quot;Icovcu&quot;, &quot;Idevcu&quot;, &quot;Iprvcu&quot;, #sewatnh #pajak #bunga #hibah #deviden #premi
-        #   &quot;Ipkvcu&quot;, &quot;Irdvcu&quot;, &quot;Iklvcu&quot;, &quot;Ikdvcu&quot;,  #kemasan #rnd #haki_dom #haki_ln
-        #   &quot;Iislov&quot;, #Iisfov, #peng_maklun_dom #peng_maklun_ln
-        #   &quot;Iuwvcu&quot;, &quot;Iotvcu&quot; #air #peng_lainlain
-        #   )
+         #   &quot;Efuvcu&quot;, &quot;Eplvcu&quot;, &quot;Enpvcu&quot;, #bbakar #listrik_pln #listrik_nonpln
+
 
 var21 &lt;- c(&quot;Kipb&quot;, &quot;Dprovi&quot;, &quot;Dkabup&quot;, &quot;Disic5&quot;, &quot;Year&quot;,
         # TK dan Upah
@@ -670,17 +666,13 @@ var21 &lt;- c(&quot;Kipb&quot;, &quot;Dprovi&quot;, &quot;Dkabup&quot;, &quot;Di
            &quot;Zntvcu&quot;, &quot;Znevcu&quot;, &quot;Znhvcu&quot;, &quot;Znrvcu&quot;, #pengpek_lain = upah_tklain + pengpeklain_tklain
            &quot;Zpdvcu&quot;, #pengpek_prod
            &quot;Zndvcu&quot;) #pengpek_lain
+      
         # Komposisi Biaya INPUT
         #   &quot;Rdnvcu&quot;, &quot;Rimvcu&quot;, #bbakupen_dom #bbakupen_imp
         #   &quot;Efuvcu&quot;, &quot;Eplvcu&quot;, &quot;Enpvcu&quot;, #bbakar #listrik_pln #listrik_nonpln
-        #   &quot;Ibrvcu&quot;, #sewagdg
-        #   &quot;Ilrvcu&quot;, &quot;Itxvcu&quot;, &quot;Iinvcu&quot;, &quot;Icovcu&quot;, &quot;Idevcu&quot;, &quot;Iprvcu&quot;, #sewatnh #pajak #bunga #hibah #deviden #premi
-        #   &quot;Ipkvcu&quot;, &quot;Irdvcu&quot;, &quot;Iklvcu&quot;, &quot;Ikdvcu&quot;,  #kemasan #rnd #haki_dom #haki_ln
-        #   &quot;Iislov&quot;, #Iisfov, #peng_maklun_dom #peng_maklun_ln
-        #   &quot;Iuwvcu&quot;, &quot;Iotvcu&quot; #air #peng_lainlain
-        #   )
 
-varskim23 &lt;- c(&quot;tahun&quot;, &quot;kip&quot;, &quot;prov&quot;, &quot;kab&quot;, &quot;r201_kode&quot;, &quot;r203&quot;, &quot;Disic5&quot;, &quot;b2r217&quot;,
+
+varskim23 &lt;- c(&quot;tahun&quot;, &quot;kip&quot;, &quot;prov&quot;, &quot;kab&quot;, &quot;r203&quot;, &quot;Disic5&quot;, &quot;b2r217&quot;,
           # TK dan Upah
                &quot;r206b_1&quot;, #tk_laki
                &quot;r206b_2&quot;, #tk_perem
@@ -691,19 +683,15 @@ varskim23 &lt;- c(&quot;tahun&quot;, &quot;kip&quot;, &quot;prov&quot;, &quot;ka
                &quot;r301a_1&quot;, &quot;r301a_2&quot;, #pengpek_prod = upah_tkprod + pengpeklain_tkprod
                &quot;r301b_1&quot;, &quot;r301b_2&quot;, #pengpek_lain = upah_tklain + pengpeklain_tklain
                &quot;r301c&quot;) #total_upah
+          
           # Komposisi Biaya INPUT
-         #      &quot;r501k5_sum&quot;, &quot;r501k7_sum&quot;, #bbakupen_dom #bbakupen_imp
-        #       &quot;r303a&quot;, &quot;r304c&quot;, #bbakar #listrik
-        #       &quot;r305a&quot;, #sewagdg 
-        #       &quot;r305b&quot;, &quot;r306&quot;, &quot;r307&quot;, &quot;r308&quot;, &quot;r309&quot;, &quot;r310&quot;, #sewatnh #pajak #bunga #hibah #deviden #premi
-        #       &quot;r311&quot;, #peng_maklun
-        #       &quot;r312&quot;, &quot;r313&quot; #air #peng_lainlain
-        #       )
+          #      &quot;r501k5_sum&quot;, &quot;r501k7_sum&quot;, #bbakupen_dom #bbakupen_imp
+          #       &quot;r303a&quot;, &quot;r304c&quot;, #bbakar #listrik
+       
 
 # Sync variabel dan nama var ke SKIM23 &amp; Imputasi TK dan Pengeluaran Pekerja
 stpim22_imptpt &lt;- stpim22_imptpt |&gt;
   mutate(tahun   = 2022,
-         r201_kode = NA,
          b2r217    = NA,
          r206b_1 = rowSums(across(c(&quot;Lpmnop&quot;, &quot;Lpmnon&quot;, &quot;Lnmnop&quot;, &quot;Lnmnon&quot;)), na.rm = TRUE),  #tk_laki
          r206b_2 = rowSums(across(c(&quot;Lpwnop&quot;, &quot;Lpwnon&quot;, &quot;Lnwnop&quot;, &quot;Lnwnon&quot;)), na.rm = TRUE), #tk_perem
@@ -724,7 +712,6 @@ stpim22_imptpt &lt;- stpim22_imptpt |&gt;
 
 stpim21_imptpt &lt;- stpim21_imptpt |&gt;
   mutate(tahun = 2021,
-         r201_kode = NA,
          b2r217    = NA,
          r206b_1 = rowSums(across(c(&quot;Pwtlpi&quot;, &quot;Pwtlpa&quot;, &quot;Pwtlni&quot;, &quot;Pwtlna&quot;, 
                                     &quot;Pttlpi&quot;, &quot;Pttlpa&quot;, &quot;Pttlni&quot;, &quot;Pttlna&quot;)), na.rm = TRUE),  #tk_laki
@@ -763,7 +750,6 @@ stpim21_imptpt &lt;- stpim21_imptpt |&gt;
          r301b_1 =  0, #upah_tklain
          r301b_2 =  0, #pengpeklain_tklain
          r301c   = rowSums(across(c(&quot;r301a_1&quot;, &quot;r301a_2&quot;, &quot;r301b_1&quot;, &quot;r301b_2&quot;)), na.rm = TRUE), #total_upah
-         r201_kode = NA,
          b2r217    = NA,
          Disic5    = NA
          )</code></pre>
@@ -844,11 +830,16 @@ stpim_imptpt &lt;- stpim_imptpt |&gt;
          kbli2_stpim = ifelse((kbli2_stpim != 13 &amp; kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim)) |&gt;
   #Imputasi KBLI untuk KIP tanpa histori dengan KBLI dari DPA23
   mutate(Disic5      = ifelse(is.na(kbli2_stpim), b2r217, Disic5),
-         kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))</code></pre>
+         kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))
+
+#Populasi TPT
+total_tpt23n &lt;- nrow(stpim23_tpt) + nrow(stpim_imptpt) + nrow(skim23)</code></pre>
 <p>Ada 57 KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan
 pengecekan, 31 KIP dieliminasi karena bukan industri TPT.</p>
 <p><strong>Target imputasi sekarang menjadi: 985
 perusahaan.</strong></p>
+<p><strong>Jadi populasi usaha TPT 2023 (cakupan SKIM23) menjadi
+4342</strong> (44 STPIM23 TPT + 985 Target Imputasi + 3313 SKIM23).</p>
 </div>
 </div>
 <div id="imputasi-komponen-biaya-input" class="section level1">
@@ -1197,10 +1188,7 @@ knn_fit &lt;- train(output ~ . ,
 <pre class="r"><code>knn_preds &lt;- predict(knn_fit, validation_data)
 rmse(actual = validation_data$output, predicted = knn_preds)</code></pre>
 <pre><code>## [1] 367935070</code></pre>
-<pre class="r"><code># 367 935 070
-
-
-# Model RF
+<pre class="r"><code># Model RF
 set.seed(6789)
 rf_fit &lt;- train(output ~ . ,
                 data = train_data,
@@ -1234,7 +1222,6 @@ rf_fit</code></pre>
 <pre class="r"><code>rf_preds &lt;- predict(rf_fit, validation_data)
 rmse(actual = validation_data$output, predicted = rf_preds)</code></pre>
 <pre><code>## [1] 277984491</code></pre>
-<pre class="r"><code># 277 984 491</code></pre>
 </div>
 <div id="output-imputation" class="section level2">
 <h2>Output imputation</h2>
@@ -1306,39 +1293,61 @@ stpim_imptpt_output_nonwjr &lt;- stpim_imptpt_output |&gt;
          ntb_rasio    = output_rasio - input,
          cek_ntbupah  = ntb_rasio - r301c)
 
-#jadikan satu ke dataset output
+#Jadikan satu ke dataset output
 stpim_imptpt_output &lt;- stpim_imptpt_output |&gt;
   left_join(stpim_imptpt_output_nonwjr |&gt; 
               select(kip, output_rasio), by = &quot;kip&quot;) |&gt;
   mutate(output      = ifelse(cek_ntbupah &lt; 0, output_rasio, output),
          ntb         = output - input,
          cek_ntbupah = ntb - r301c) |&gt;
-  select(-output_rasio)
-
-
-#Jadikan satu dengan main dataset
+  select(-output_rasio)</code></pre>
+<ul>
+<li>Mengkompile data imputasi final</li>
+</ul>
+<p>Data final imputasi sudah didapatkan namun dengan beberapa catatan,
+a.l: - Nama komoditas produksi (r504a) ada yang belum terisi karena
+tidak adanya data historis. - Ada beberapa nama komoditas yang tidak
+relevan dengan TPT perlu pengecekan lebih lanjut.</p>
+<pre class="r"><code>#Jadikan satu dengan main dataset
 stpim_imptpt &lt;- stpim_imptpt |&gt;
   left_join(stpim_imptpt_output |&gt; 
-              select(kip, output, ntb), by = &quot;kip&quot;)
+              select(kip, output, ntb), by = &quot;kip&quot;) |&gt;
+  #menyesuaikan nama variabel dengan SKIM23
+  rename(r503k6_sum = output,
+         r201_kode  = Disic5)
 
-  
+#Tambahkan variabel produksi
+stpim_imptpt &lt;- stpim_imptpt |&gt;
+  left_join(stpim22_tpt |&gt;
+              select(Kipb, Produksi), by = c(&quot;kip&quot; = &quot;Kipb&quot;)) |&gt;
+  rename(Produksi22 = Produksi) |&gt;
+  left_join(stpim21_tpt |&gt;
+              select(Kipb, Produksi), by = c(&quot;kip&quot; = &quot;Kipb&quot;)) |&gt;
+  rename(Produksi21 = Produksi) |&gt;
+  mutate(r504a = ifelse(is.na(Produksi22), Produksi21, Produksi22)) |&gt;
+  mutate(r504a = toupper(as.character(r504a)))
 
-#cek nama variabel produksi
-#cek r201_kode apa?
+#Select variabel utama
+stpim23_imptpt &lt;- stpim_imptpt |&gt;
+  select(kip, prov, kab, r203, r201_kode,
+         r206a, r206b_1, r206b_2, r206c_1, r206c_2, r206d,   #tk
+         r301a_1, r301a_2, r301b_1, r301b_2, r301c,          #pengeluaran pekerja
+         r303a, r304c,                                       #bahan bakar #listrik
+         r501k5_sum, r501k7_sum,                             #bahan baku penolong domestik #bahan baku penolong impor
+         r503k6_sum,                                         #produksi barang
+         r504a,                                              #nama komoditas produksi
+         input, ntb)</code></pre>
+<pre class="r"><code>## variabel imputasi
+## model apa imputasi: rasio &gt;&gt; sd input? ml &gt;&gt; output?
 
-
-
-## variabel imputasi?
-## model apa imputasi? rasio &gt;&gt; sd input? ml &gt;&gt; output?
-
+## bulan operasional: historis
 ## tk : historis
 ## pengeluaran pekerja : historis w/ adjustment growth avg UMP
 
 ## biaya input : historis w/ adjustment growth input by kbli2 &amp; prov &amp; skala tk
 ## breakdown input: bb dom, bb impor, bbakar, listrik
 
-## total output : rasio/ml?
-## breakdown output ??</code></pre>
+## total output : ml</code></pre>
 </div>
 </div>
 
