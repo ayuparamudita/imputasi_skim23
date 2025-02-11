@@ -1,0 +1,87 @@
+---
+title: "Imputasi SKIM23 Data Tidak Lengkap"
+author: "Ayu Paramudita"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+code-fold: true
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(writexl)
+library(tidyr)
+library(ggplot2)
+
+#package untuk machine learning
+library(caret)
+library(Metrics)
+library(randomForest)
+```
+
+```{r, warning=FALSE}
+#Load data
+skim23  <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/SKIM.IIADetail NASIONAL tahun 2024.xlsx")
+dpa23   <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA NASIONAL tahun 2023.xlsx")
+dpa24 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA (CAPI) NASIONAL tahun 2024.xlsx")
+
+```
+
+# Target imputasi data tidak lengkap SKIM23
+
+- Memilih KIP yang isiannya tidak lengkap pada SKIM23.
+
+```{r}
+skim23_tl <- skim23 |>
+  filter(tidak_lengkap == 1) |>
+  mutate(kbli2 = substr(r201_kode, 1, 2))
+
+```
+
+- Melakukan pengecekan KBLI.
+
+```{r, warning=FALSE}
+#Cek KBLI NA
+cek_nakbli <- sum(is.na(skim23_tl$kbli2))
+
+```
+
+Sebanyak `r nrow(skim23_tl)` perusahaan tidak mengisi kuesioner SKIM23 secara lengkap. Setelah dilakukan pengecekan KBLI, sebanyak `r cek_nakbli` KIP tidak terisi KBLInya.
+
+# Imputasi KBLI
+
+- Mengimputasi KBLI yang tidak terisi dengan data KBLI dari DPA23 atau DPA24.
+
+```{r}
+#Imputasi KBLI
+skim23_tl <- skim23_tl |>
+  #input kbli NA dari DPA23
+  left_join(dpa23 |> select(kip, b2r217), by = "kip") |>
+  mutate(r201_kode = ifelse(is.na(r201_kode), b2r217, r201_kode),
+         kbli2     = substr(r201_kode, 1, 2)) |>
+  #input kbli NA atau kbli non TPT dari DPA24
+  left_join(dpa24 |> select(kip, kbli5digit), by = "kip") |>
+  mutate(r201_kode = ifelse(is.na(r201_kode) | (kbli2 != 13 & kbli2 !=14), kbli5digit, r201_kode),
+         kbli2     = substr(r201_kode, 1, 2))
+
+#Cek KBLI non TPT
+skim23_tl_nontpt <- sum(is.na(skim23_tl$r201_kode) | 
+                          (skim23_tl$kbli2 != 13 & skim23_tl$kbli2 != 14))
+
+#Exclude KBLI non TPT
+skim23_tl_target <- skim23_tl |>
+  filter(!(is.na(r201_kode) | (kbli2 != 13 & kbli2 != 14)))
+
+```
+
+Selanjutnya, imputasi KBLI dilakukan dengan data KBLI dari DPA23 atau DPA24, namun setelah dilakukan pengecekan kembali terdapat `r skim23_tl_nontpt` KIP yang semestinya bukan TPT sehingga tidak dimasukkan ke dalam target imputasi. 
+
+Target imputasi sebanyak `r nrow(skim23_tl_target)`.
+
+
