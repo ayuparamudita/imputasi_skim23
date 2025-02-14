@@ -78,10 +78,95 @@ skim23_tl_nontpt <- sum(is.na(skim23_tl$r201_kode) |
 skim23_tl_target <- skim23_tl |>
   filter(!(is.na(r201_kode) | (kbli2 != 13 & kbli2 != 14)))
 
+
+
+## Telisik jadikan satu 
+
+colnames(skim23_tl_target)
+
+#satukan dengan target_imptpt
+skim23_tl_target <- dpa23_tpt |>
+  select(-prov, -kab, -b2r217) |>
+  left_join(skim23_tl_target, by = "kip")
+
 ```
 
 Selanjutnya, imputasi KBLI dilakukan dengan data KBLI dari DPA23 atau DPA24, namun setelah dilakukan pengecekan kembali terdapat `r skim23_tl_nontpt` KIP yang semestinya bukan TPT sehingga tidak dimasukkan ke dalam target imputasi. 
 
 Target imputasi sebanyak `r nrow(skim23_tl_target)`.
 
+# Imputasi tenaga kerja
 
+## Perbaikan konsistensi tenaga kerja
+
+- Mengecek konsistensi tenaga kerja dari isian yang respon. Kemudian melakukan perbaikan isian tenaga kerja untuk KIP dengan isian tenaga kerja tidak konsisten.
+
+```{r}
+skim23_tl_target <- skim23_tl_target |> 
+  #mengecek apakah isian tk konsisten dengan total tk
+  mutate(r206a_cek1 = rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE) - 
+                      rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE))
+
+#Cek KIP yang isian tk tidak konsiten dengan total tk
+cek_tk <- skim23_tl_target |>
+  filter(r206a_cek1 != 0 | r206a == 0) |>
+  #perbaikan konsistensi tk
+  ##imputasi tk produksi agar konsisten
+  mutate(r206c_1 = ifelse(r206c_1 == 0 | is.na(r206c_1), r206a, r206c_1), 
+         r206b_1 = ifelse(is.na(r206b_1), r206a, r206b_1)) |>
+  ##imputasi tk produksi agar konsisten
+  mutate(r206c_1 = ifelse(r206a > rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE), 
+                             r206a - r206c_2, 
+                             r206c_1),
+         r206c_1 = ifelse(r206c_1 == 539, 239, r206c_1),
+         r206a   = ifelse(r206a == 0, rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE), r206a)) |>
+  rename(r206ar = r206a,
+         r206c_1r = r206c_1,
+         r206b_1r = r206b_1)
+
+#Perbaikan konsistensi tk
+skim23_tl_target <- skim23_tl_target |> 
+  left_join(cek_tk |> select(kip, r206ar, r206b_1r, r206c_1r), by = "kip") |>
+  mutate(r206a   = ifelse(!(is.na(r206ar)), r206ar, r206a),
+         r206b_1 = ifelse(!(is.na(r206b_1r)), r206b_1r, r206b_1),
+         r206c_1 = ifelse(!(is.na(r206c_1r)), r206c_1r, r206c_1)) |>
+  #mengecek apakah isian tk konsisten dengan total tk
+  mutate(r206a_cek1 = rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE) - 
+                      rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE)) |>
+  select(-r206ar, -r206b_1r, -r206c_1r)
+
+```
+
+## Imputasi tenaga kerja yang isiannya NA atau 0
+
+```{r}
+#filter data tk isian NA atau 0
+skim23_tl_target_natk <- skim23_tl_target |>
+  filter(r206a == 0 | is.na(r206a))
+
+#match dengan data historis stpim22
+stpim22_imptpt_tl <- stpim22 |>
+  filter(Kipb %in% skim23_tl_target_natk$kip) 
+
+#sisa target imputasi 
+sisa_target22_tl <- skim23_tl_target_natk |>
+  filter(!(kip %in% stpim22_imptpt_tl$Kipb))
+
+#match dengan data historis stpim21
+stpim21_imptpt_tl <- stpim21 |>
+  filter(Kipb %in% sisa_target22_tl$kip)
+
+# sisa target imputasi 
+sisa_target21_tl <- sisa_target22_tl |>
+  filter(!(kip %in% stpim21_imptpt_tl$Kipb))
+
+
+
+# gabung dengan imputasi utama? no karena casenya beda
+# imputasi tk, upah
+
+
+
+
+
+```

@@ -26,16 +26,21 @@ library(randomForest)
 ```
 
 
-# Investigasi target imputasi
+# Persiapan data
 
 ## Load data
 
 ```{r, warning=FALSE}
 dpa23   <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA NASIONAL tahun 2023.xlsx")
+dpa24 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/DPA (CAPI) NASIONAL tahun 2024.xlsx")
 skim23  <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/SKIM.IIADetail NASIONAL tahun 2024.xlsx")
 
 stpim23 <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/STPIM (CAWI) NASIONAL tahun 2024.xlsx")
 weight23 <- read.csv2("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/2024-12-23 10_02_52 Weight STPIM 2024(Sheet1).csv")
+
+stpim22 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg22.xlsx")
+stpim21 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx")
+
 
 ```
 
@@ -47,9 +52,9 @@ dpa23_tpt <- dpa23 |>
   mutate(kbli2_dpa23 = substr(b2r217, 1, 2)) |>
   filter(b2r205 == 1,                            # kondisi aktif
          b2r210 != 4,                            # bukan kantor pusat
-         kbli2_dpa23 == 13 | kbli2_dpa23 == 14              # kbli 13 dan 14
+         kbli2_dpa23 == 13 | kbli2_dpa23 == 14   # kbli 13 dan 14
          ) |>
-  select(kip, prov, kab, b2r217, kbli2_dpa23, b2r205, b2r210, b2r224, b2r225, b2r226, b2r218)
+  select(kip, prov, kab, b2r217, kbli2_dpa23, b2r216, b2r205, b2r210, b2r224, b2r225, b2r226, b2r218)
 
 # Buat tabel
 tab_dpa23tpt <- table(dpa23_tpt$kbli2_dpa23)
@@ -70,13 +75,13 @@ Jumlah target usaha TPT (KBLI 13 & 14) menurut DPA23: **`r nrow(dpa23_tpt)`**.
 Dengan rincian sebagai berikut: `r tab_dpa23tpt`.
 
 
-## Cek SKIM23
+## Data SKIM23
 
 ```{r }
 skim23 <- skim23 |>
   mutate(kbli2 = substr(r201_kode, 1, 2))
 
-# Buat tabel
+#Buat tabel
 tab_skim23 <- table(skim23$kbli2)
 tab_skim23 <- as.data.frame(tab_skim23) |>
   rename(KBLI = Var1,
@@ -86,7 +91,12 @@ total_skim23 <- data.frame(KBLI = "Total", N = sum(tab_skim23$N))
 tab_skim23 <- rbind(tab_skim23, total_skim23)
 tab_skim23 <- kable(tab_skim23)
 
+#KBLI NA
 nkbli_na <- sum(is.na(skim23$kbli2))   
+
+#SKIM23 Tidak Lengkap
+skim23_tl <- skim23 |>
+  filter(tidak_lengkap == 1)
 
 ```
 
@@ -94,23 +104,117 @@ Jumlah perusahaan TPT di SKIM23 : **`r nrow(skim23)`**
 
 `r tab_skim23`
 
-**KBLI yang NA : `r nkbli_na`**
+KBLI SKIM23 yang NA sebanyak `r nkbli_na`.
+
+Sebanyak `r nrow(skim23_tl)` perusahaan tidak mengisi kuesioner SKIM23 secara lengkap. 
+
+SKIM23 tidak lengkap dan target usaha TPT yang belum ada diwebentri akan diimputasi.
 
 
-## Target usaha SKIM yang perlu imputasi dengan dasar jumlah usaha dari DPA23 TPT
+# Target imputasi
 
-```{r }
-target_imptpt <- dpa23_tpt |>
+## Target imputasi dari SKIM23 tidak lengkap (TL)
+
+### Pengecekan KBLI
+
+```{r, warning=FALSE}
+#Cek KBLI NA TL
+nkbli_na_tl <- sum(is.na(skim23_tl$kbli2))
+
+```
+
+Setelah dilakukan pengecekan KBLI untuk SKIM23 TL, sebanyak `r nkbli_na_tl` KIP tidak terisi KBLInya.
+
+
+### Imputasi KBLI
+
+Pengecekan dan imputasi KBLI diperlukan karena KBLI sebagai dasar imputasi variabel lain.
+
+- Mengimputasi KBLI yang tidak terisi dengan data KBLI dari DPA23 atau DPA24.
+
+```{r}
+#Imputasi KBLI
+skim23_tl <- skim23_tl |>
+  #input kbli NA dari DPA23
+  left_join(dpa23 |> select(kip, b2r217), by = "kip") |>
+  mutate(r201_kode = ifelse(is.na(r201_kode), b2r217, r201_kode),
+         kbli2     = substr(r201_kode, 1, 2)) |>
+  #input kbli NA atau kbli non TPT dari DPA24
+  left_join(dpa24 |> select(kip, kbli5digit), by = "kip") |>
+  mutate(r201_kode = ifelse(is.na(r201_kode) | (kbli2 != 13 & kbli2 !=14), kbli5digit, r201_kode),
+         kbli2     = substr(r201_kode, 1, 2))
+
+#TL non eligible SKIM23
+skim23_tl_nontpt <- skim23_tl |>
+  filter(is.na(skim23_tl$r201_kode) | 
+                          (skim23_tl$kbli2 != 13 & skim23_tl$kbli2 != 14))
+
+#Exclude non eligible SKIM23
+skim23_tl_target <- skim23_tl |>
+  filter(!(is.na(r201_kode) | (kbli2 != 13 & kbli2 != 14)))
+
+```
+
+Selanjutnya, imputasi KBLI dilakukan dengan data KBLI dari DPA23 atau DPA24. Namun setelah dilakukan pengecekan kembali, terdapat `r nrow(skim23_tl_nontpt)` usaha tidak eligibel SKIM23 sehingga tidak dimasukkan ke dalam target imputasi, a.l. `r skim23_tl_nontpt$kip` (satu ganda, satu bukan TPT).
+
+**Target imputasi dari SKIM23 TL sebanyak `r nrow(skim23_tl_target)`.**
+
+
+### Perbaikan konsistensi tenaga kerja
+
+Mengecek konsistensi tenaga kerja dari isian yang respon. Kemudian melakukan perbaikan isian tenaga kerja untuk KIP dengan isian tenaga kerja tidak konsisten.
+
+```{r}
+skim23_tl_target <- skim23_tl_target |> 
+  #mengecek apakah isian tk konsisten dengan total tk
+  mutate(r206a_cek1 = rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE) - 
+                      rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE))
+
+#Cek KIP yang isian tk tidak konsiten dengan total tk
+cekskim23tl_tk <- skim23_tl_target |>
+  filter(r206a_cek1 != 0 | r206a == 0) |>
+  #perbaikan konsistensi tk
+  ##imputasi tk produksi agar konsisten
+  mutate(r206c_1 = ifelse(r206c_1 == 0 | is.na(r206c_1), r206a, r206c_1), 
+         r206b_1 = ifelse(is.na(r206b_1), r206a, r206b_1)) |>
+  ##imputasi tk produksi agar konsisten
+  mutate(r206c_1 = ifelse(r206a > rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE), 
+                             r206a - r206c_2, 
+                             r206c_1),
+         r206c_1 = ifelse(r206c_1 == 539, 239, r206c_1),
+         r206a   = ifelse(r206a == 0, rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE), r206a)) |>
+  rename(r206ar = r206a,
+         r206c_1r = r206c_1,
+         r206b_1r = r206b_1)
+
+#Perbaikan konsistensi tk
+skim23_tl_target <- skim23_tl_target |> 
+  left_join(cekskim23tl_tk |> select(kip, r206ar, r206b_1r, r206c_1r), by = "kip") |>
+  mutate(r206a   = ifelse(!(is.na(r206ar)), r206ar, r206a),
+         r206b_1 = ifelse(!(is.na(r206b_1r)), r206b_1r, r206b_1),
+         r206c_1 = ifelse(!(is.na(r206c_1r)), r206c_1r, r206c_1)) |>
+  #mengecek apakah isian tk konsisten dengan total tk
+  mutate(r206a_cek1 = rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE) - 
+                      rowSums(across(c(r206c_1, r206c_2)), na.rm = TRUE)) |>
+  select(-r206ar, -r206b_1r, -r206c_1r)
+
+```
+
+
+## Target imputasi dengan dasar jumlah DPA23 TPT
+
+```{r}
+target_imptpt_dpa23 <- dpa23_tpt |>
   filter(!(kip %in% skim23$kip))
 
 ```
 
-**Target imputasi TPT: `r nrow(target_imptpt)`.**
+**Target imputasi TPT dari irisan DPA23 TPT yang belum masuk ke dalam webentri sebanyak `r nrow(target_imptpt_dpa23)`**.
 
 
-## Cek DPA23 TPT dengan weight STPIM23
+### Cek DPA23 TPT dengan STPIM23-weight
 
-Catatan: weight STPIM23 adalah dokumen berisi list KIP usaha STPIM23 dan penimbangnya.
+Catatan: STPIM23-weight adalah dokumen berisi list KIP usaha STPIM23 dan penimbangnya.
 
 ```{r}
 # Cek irisan DPA23 TPT dan weight STPIM23
@@ -119,11 +223,10 @@ cek_dpa23tpt_weight <- dpa23_tpt |>
 
 ```
 
-Tidak ada irisan DPA23 TPT dengan weight: aman.
-Sehingga, target imputasi TPT **`r nrow(target_imptpt)`**.
+Irisan DPA23 dan usaha di STPIM23-weight sebanyak `r nrow(cek_dpa23tpt_weight)`. Jika tidak ada irisan DPA23 TPT dengan weight, maka target imputasi TPT tetap **`r nrow(target_imptpt_dpa23)`**.
 
 
-## Cek STPIM23 TPT dan weight STPIM23
+### Cek STPIM23 TPT dan STPIM23-weight
 
 ```{r, results='hide'}
 # Cek usaha TPT di STPIM23
@@ -133,7 +236,6 @@ stpim23_tpt <- stpim23 |>
 
 list_stpim23_tpt <- print(stpim23_tpt$kip)
 
-total_tpt23 <- nrow(stpim23_tpt) + nrow(target_imptpt) + nrow(skim23)
 ```
 
 Ternyata masih ada `r nrow(stpim23_tpt)` usaha TPT yang dicatat di STPIM23. 
@@ -152,7 +254,88 @@ Ada `r nrow(cek_stpim23tpt_weight)` usaha 13-14 yang ada di weight. Maka, dokume
 
 `r list_stpim23_tpt`
 
-**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sementara sebesar : `r total_tpt23`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
+
+### Cek konsistensi KBLI di STPIM dan DPA
+
+Pengecekan dan imputasi KBLI diperlukan karena KBLI sebagai dasar imputasi variabel lain.
+
+- Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya bukan TPT? 
+- Cek KBLI dan produksi perusahaan yang terindikasi bukan TPT.
+- Keluarkan yang kira-kira bukan TPT.
+- Update KBLI yang sudah dicek dengan imputasi dari sumber DPA yang dicek benar.
+- KBLI dasar untuk imputasi yang digunakan adalah KBLI STPIM dengan asumsi pemeriksaan STPIM berjalan dengan benar.
+
+```{r}
+#Tambahkan Disic5 dan Produksi dari STPIM
+target_imptpt_dpa23 <- target_imptpt_dpa23 |>
+  left_join(stpim22 |> select(Kipb, Disic522, Produksi), by = c("kip" = "Kipb")) |>
+  mutate(tahun22 = ifelse(is.na(Disic522), NA, 2022)) |>
+  rename(Produksi22 = Produksi) |>
+  left_join(stpim21 |> select(Kipb, Disic521, Produksi), by = c("kip" = "Kipb")) |>
+  mutate(tahun21 = ifelse(is.na(Disic521), NA, 2021)) |>
+  rename(Produksi21     = Produksi,
+         produksi_dpa23 = b2r216) |>
+  #Combine Disic5 dan Produksi
+  mutate(Disic5         = ifelse(is.na(Disic522), Disic521, Disic522),
+         produksi_stpim = ifelse(is.na(Produksi22), Produksi21, Produksi22),
+         tahun          = ifelse(is.na(tahun22), tahun21, tahun22),
+         kbli2_stpim    = substr(Disic5, 1, 2)) |>
+  select(-Disic522, -Disic521, -Produksi22, -Produksi21, -tahun22, -tahun21)
+
+#Filter STPIM non-TPT
+cek_kbli <- target_imptpt_dpa23 |>
+  filter(kbli2_stpim != 13 & kbli2_stpim != 14) |>
+  select(kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23, tahun) |>
+  print()
+
+#write_xlsx(cek_kbli, "cek_kbli.xlsx")
+
+#KIP yang sudah dicek dan diindikasi non-TPT
+cek_kbli_nontpt <- c(311390007, 311390456, 311510118, 311810306, 312210019, 321311729, 
+                     321311804, 321311819, 321390608, 321391680, 321391771, 321412390, 
+                     321510033, 321720004, 322100212, 322931973, 331020610, 331391969, 
+                     332930002, 333100045, 341390020, 351310950, 351390042, 351390102, 
+                     351390414, 351391068, 351391079, 351411144, 352220076, 361390162, 
+                     321410652)
+
+#Keluarkan perusahaan non-TPT
+target_imptpt_dpa23 <- target_imptpt_dpa23 |>
+  filter(!(kip %in% cek_kbli_nontpt))
+
+#Update KBLI
+target_imptpt_dpa23 <- target_imptpt_dpa23 |>
+  #Update KBLI STPIM hasil pengecekan dengan KBLI DPA
+  mutate(Disic5      = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), b2r217, Disic5),
+         kbli2_stpim = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim)) |>
+  #Imputasi KBLI untuk KIP tanpa histori dengan KBLI dari DPA23
+  mutate(Disic5      = ifelse(is.na(kbli2_stpim), b2r217, Disic5),
+         kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))
+
+```
+
+Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan pengecekan, `r length(cek_kbli_nontpt)` KIP dieliminasi karena bukan industri TPT.
+
+**Target imputasi dengan dasar DPA23 menjadi: `r nrow(target_imptpt_dpa23)` perusahaan.**
+
+```{r}
+#Populasi TPT
+total_tpt23 <- nrow(stpim23_tpt) + nrow(target_imptpt_dpa23) + nrow(skim23) - nrow(skim23_tl_nontpt)
+
+#Total target imputasi 
+total_imptpt <- nrow(skim23_tl_target) + nrow(target_imptpt_dpa23)
+
+```
+
+**Sehingga populasi usaha TPT 2023 (cakupan SKIM23) sebesar : `r total_tpt23`** (dengan rincian `r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(target_imptpt_dpa23)` Target Imputasi dasar DPA23 + `r nrow(skim23) - nrow(skim23_tl_nontpt)` SKIM23).
+
+Total target imputasi sebanyak `r total_imptpt` perusahaan TPT.
+
+
+```{r}
+#WTD:
+#lanjut jadikan 1 target tl dan dasar DPA23
+#imputasi tk: tl NA, konsistensi tl, dp NA, dp historis
+```
 
 
 # Imputasi tenaga kerja dan upah
@@ -171,7 +354,7 @@ stpim21 <- stpim21 |>
   mutate(kbli2_stpim = substr(Disic521, 1, 2))
 ```
 
-## Cek irisan target imputasi dengan STPIM22, STPIM21, dan STPIM20
+## Cek irisan target imputasi dengan STPIM22 dan STPIM21
 
 Cek irisan ini bertujuan untuk mendapatkan basis data dari data historis masing-masing KIP yang ingin diimputasi.
 
@@ -366,61 +549,7 @@ stpim_imptpt <- stpim22_imptpt |>
 
 ```
 
-## Cek konsistensi KBLI di STPIM dan DPA
 
-Pengecekan dan penetapan KBLI diperlukan karena KBLI sebagai dasar imputasi lebih lanjut.
-
-- Cek apakah ada target yang memiliki historis STPIM yang KBLI-nya bukan TPT? 
-- Cek KBLI dan produksi perusahaan yang terindikasi bukan TPT.
-- Keluarkan yang kira-kira bukan TPT.
-- Update KBLI yang sudah dicek dengan imputasi dari sumber DPA yang dicek benar.
-- KBLI dasar untuk imputasi yang digunakan adalah KBLI STPIM dengan asumsi pemeriksaan STPIM berjalan dengan benar.
-
-```{r}
-cek_kbli <- stpim_imptpt |> 
-  filter(kbli2_stpim != 13 & kbli2_stpim != 14) |>
-  left_join(dpa23[c("kip", "b2r216")], by = "kip") |>
-  left_join(stpim22[c("Kipb", "Produksi")], by = c("kip" = "Kipb")) |>
-  rename(produksi_dpa23 = b2r216,
-         produksi_stpim = Produksi)
-
-list_cek_kbli <- cek_kbli |>
-  select(kip, Disic5, b2r217, kbli2_stpim, kbli2_dpa23, produksi_stpim, produksi_dpa23, tahun) |>
-  print()
-
-#write_xlsx(cek_kbli, "cek_kbli.xlsx")
-
-#KIP yang sudah dicek dan diindikasi bukan TPT
-cek_kbli_nontpt <- c(311390007, 311390456, 311510118, 311810306, 312210019, 321311729, 
-                     321311804, 321311819, 321390608, 321391680, 321391771, 321412390, 
-                     321510033, 321720004, 322100212, 322931973, 331020610, 331391969, 
-                     332930002, 333100045, 341390020, 351310950, 351390042, 351390102, 
-                     351390414, 351391068, 351391079, 351411144, 352220076, 361390162, 
-                     321410652)
-
-#Keluarkan perusahaan non-TPT
-stpim_imptpt <- stpim_imptpt |>
-  filter(!(kip %in% cek_kbli_nontpt))
-
-#Update KBLI
-stpim_imptpt <- stpim_imptpt |>
-  #Update KBLI STPIM hasil pengecekan dengan KBLI DPA
-  mutate(Disic5      = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), b2r217, Disic5),
-         kbli2_stpim = ifelse((kbli2_stpim != 13 & kbli2_stpim != 14), kbli2_dpa23, kbli2_stpim)) |>
-  #Imputasi KBLI untuk KIP tanpa histori dengan KBLI dari DPA23
-  mutate(Disic5      = ifelse(is.na(kbli2_stpim), b2r217, Disic5),
-         kbli2_stpim = ifelse(is.na(kbli2_stpim), kbli2_dpa23, kbli2_stpim))
-
-#Populasi TPT
-total_tpt23n <- nrow(stpim23_tpt) + nrow(stpim_imptpt) + nrow(skim23)
-
-```
-
-Ada `r nrow(cek_kbli)` KIP dengan KBLI dari STPIM yang bukan TPT. Setelah dilakukan pengecekan, `r length(cek_kbli_nontpt)` KIP dieliminasi karena bukan industri TPT.
-
-**Target imputasi sekarang menjadi: `r nrow(stpim_imptpt)` perusahaan.**
-
-**Jadi populasi usaha TPT 2023 (cakupan SKIM23) menjadi `r total_tpt23n`** (`r nrow(stpim23_tpt)` STPIM23 TPT + `r nrow(stpim_imptpt)` Target Imputasi + `r nrow(skim23)` SKIM23).
 
 # Imputasi komponen biaya input
 
@@ -834,5 +963,6 @@ write_xlsx(skim23_imptpt, "skim23_imptpt.xlsx")
 
 ## total output : ml
 ```
+
 
 
