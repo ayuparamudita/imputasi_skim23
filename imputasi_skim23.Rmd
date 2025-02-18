@@ -192,7 +192,7 @@ skim23_tl_target <- skim23_tl_target |>
 
 #Cek KIP yang isian tk tidak konsiten dengan total tk
 cekskim23tl_tk <- skim23_tl_target |>
-  filter(r206a_cek1 != 0 | r206a == 0) |>
+  filter(r206a_cek != 0 | r206a == 0) |>
   #perbaikan konsistensi tk
   ##imputasi tk produksi agar konsisten
   mutate(r206c_1 = ifelse(r206c_1 == 0 | is.na(r206c_1), r206a, r206c_1), 
@@ -366,7 +366,7 @@ stpim_imptpt <- target_imptpt_dpa23 |>
 Total target imputasi sebanyak `r total_imptpt` perusahaan TPT.
 
 
-# Imputasi tenaga kerja
+# Imputasi tenaga kerja dan upah
 
 ```{r}
 #Add variabel bulan operasi dan tk dari SKIM23 TL
@@ -423,14 +423,14 @@ Dari target imputasi TPT sebanyak **`r nrow(stpim_imptpt)`**, ditemukan irisan d
 **`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23/DPA24-nya mayoritas adalah skala usaha mikro, kecil, dan menengah, serta sedikit usaha skala besar.
 
 
-## Mapping variabel dan imputasi tenaga kerja dan upah sebagai variabel dasar
+## Mapping variabel dan imputasi tenaga kerja dan upah
 
 Langkah-langkah yang dilakukan di tahap ini:
 
 - Mapping nama variabel STPIM21, STPIM22, SKIM23 (acuan variabel SKIM23).
 - Mensinkronkan variabel STPIM21 dan STPIM22 sesuai dengan SKIM23.
-- Melakukan imputasi tenaga kerja dengan tenaga kerja tahun sebelumnya.
-- Melakukan imputasi upah dengan upah sebelumnya dengan adjustment rata-rata pertumbuhan UMP sebesar 7,5 persen.
+- Melakukan imputasi tenaga kerja dengan tenaga kerja tahun sebelumnya serta mempertimbangkan isian dari SKIM23 TL.
+- Melakukan imputasi upah dengan upah sebelumnya dengan adjustment rata-rata pertumbuhan UMP sebesar 7,5 persen  serta mempertimbangkan isian dari SKIM23 TL.
 [Tautan sumber dasar imputasi - Klik di sini](https://www.suara.com/news/2023/01/01/190351/rincian-lengkap-ump-2023-yang-mulai-berlaku-1-januari)
 
 ```{r }
@@ -486,10 +486,10 @@ varskim23 <- c("kip", "prov", "kab", "r202", "r203i",
                "r206c_1i", #tk_prod
                "r206c_2i", #tk_lain
                "r206di", #tk_asing
-               "r206ai" #total_tk
-               # "r301a_1", "r301a_2", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-               # "r301b_1", "r301b_2", #pengpek_lain = upah_tklain + pengpeklain_tklain
-               # "r301c" #total_upah
+               "r206ai", #total_tk
+               "r301a_1i", "r301a_2i", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+               "r301b_3i", "r301b_4i", #pengpek_lain = upah_tklain + pengpeklain_tklain
+               "r301ci" #total_upah
               )
           
           # Komposisi Biaya INPUT
@@ -505,11 +505,11 @@ stpim22_imptpt <- stpim22_imptpt |>
          r206c_2i = rowSums(across(c("Lnpnop", "Lnpnon")), na.rm = TRUE), #tk_lain
          r206di   = Ltlnof, #tk_asing
          r206ai   = rowSums(across(c("r206b_1i", "r206b_2i")), na.rm = TRUE), #total_tk
-         #r301a_1 = 1.075 * Zptvcu, #upah_tkprod
-         #r301a_2 = 1.075 * Zprvcu, #pengpeklain_tkprod
-         #r301b_1 = 1.075 * Zntvcu, #upah_tklain
-         #r301b_2 = 1.075 * Znrvcu, #pengpeklain_tklain
-         #r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
+         r301a_1i = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2i = 1.075 * Zprvcu, #pengpeklain_tkprod
+         r301b_3i = 1.075 * Zntvcu, #upah_tklain
+         r301b_4i = 1.075 * Znrvcu, #pengpeklain_tklain
+         r301ci   = rowSums(across(c("r301a_1i", "r301a_2i", "r301b_3i", "r301b_4i")), na.rm = TRUE) #total_upah
          ) |>
   rename(kip       = Kipb,
          prov      = Dprovi,
@@ -526,11 +526,11 @@ stpim21_imptpt <- stpim21_imptpt |>
          r206c_2i = rowSums(across(c("Lnpnol", "Lnpnof")), na.rm = TRUE), #tk_lain
          r206di   = rowSums(across(c("Lprnof", "Lnpnof")), na.rm = TRUE), #tk_asing
          r206ai   = rowSums(across(c("r206b_1i", "r206b_2i")), na.rm = TRUE), #total_tk
-         #r301a_1 = 1.075 * Zptvcu, #upah_tkprod
-         #r301a_2 = 1.075 * rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
-         #r301b_1 = 1.075 * Zntvcu, #upah_tklain
-         #r301b_2 = 1.075 * rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
-         #r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
+         r301a_1i = 1.075 * Zptvcu, #upah_tkprod
+         r301a_2i = 1.075 * rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
+         r301b_3i = 1.075 * Zntvcu, #upah_tklain
+         r301b_4i = 1.075 * rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
+         r301ci   = rowSums(across(c("r301a_1i", "r301a_2i", "r301b_3i", "r301b_4i")), na.rm = TRUE) #total_upah
          ) |>
   rename(kip       = Kipb,
          prov      = Dprovi,
@@ -550,11 +550,11 @@ sisa_target21 <- sisa_target21 |>
          r206c_2i =  0,  #tk_lain
          r206di   =  0, #tk_asing
          r206ai   = rowSums(across(c("r206b_1i", "r206b_2i")), na.rm = TRUE), #total_tk
-         #r301a_1i = r206b_1i * r203i * 1900, #upah_tkprod (asumsi: produksi 12 bulan, UMP Jabar Jateng ~1,9juta)
-         #r301a_2i =  0, #pengpeklain_tkprod
-         #r301b_1i =  0, #upah_tklain
-         #r301b_2i =  0, #pengpeklain_tklain
-         #r301ci   = rowSums(across(c("r301a_1i", "r301a_2i", "r301b_1i", "r301b_2i")), na.rm = TRUE), #total_upah
+         r301a_1i = r206b_1i * r203i * 1900, #upah_tkprod (asumsi: produksi 12 bulan, UMP Jabar Jateng ~1,9juta)
+         r301a_2i =  0, #pengpeklain_tkprod
+         r301b_3i =  0, #upah_tklain
+         r301b_4i =  0, #pengpeklain_tklain
+         r301ci   = rowSums(across(c("r301a_1i", "r301a_2i", "r301b_3i", "r301b_4i")), na.rm = TRUE), #total_upah
         )
 ```
 
@@ -569,12 +569,13 @@ imptpt_tk <- stpim22_imptpt |>
   # Imputasi bulan operasi karena ada NA
   mutate(r203i = ifelse(is.na(r203i), median(r203i, na.rm = TRUE), r203i))
 
-#Combine imputasi bulan operasi dan tk ke dataset utama
+#Combine imputasi bulan operasi r203 dan tk r206 ke dataset utama
 stpim_imptpt <- stpim_imptpt |>
   #modif kip tk tidak konsisten
   mutate(r206a = ifelse(kip == 321391986 | kip == 321312025, NA, r206a)) |>
   left_join(imptpt_tk |>
-              select(kip, r203i, r206ai, r206b_1i, r206b_2i, r206c_1i, r206c_2i, r206di), by = "kip") |>
+              select(kip, r203i, r206ai, r206b_1i, r206b_2i, r206c_1i, r206c_2i, r206di,
+                     r301a_1i, r301a_2i, r301b_3i, r301b_4i, r301ci), by = "kip") |>
   mutate(r203    = ifelse(r203 == 0 | is.na(r203), r203i, r203),
          r206b_1 = ifelse(r206a == 0 | is.na(r206a), r206b_1i, r206b_1),
          r206b_2 = ifelse(r206a == 0 | is.na(r206a), r206b_2i, r206b_2),
@@ -585,270 +586,120 @@ stpim_imptpt <- stpim_imptpt |>
   mutate(cek_r206a = r206a - rowSums(across(c(r206b_1, r206b_2)), na.rm = TRUE)) |>
   select(-r206ai, -r203i, -r206b_1i, -r206b_2i, -r206c_1i, -r206c_2i, -r206di, -cek_r206a)
 
+```
 
 
+### Perbaikan konsistensi upah
+
+- Mengecek konsistensi upah dengan tenaga kerja. Kemudian melakukan perbaikan isian upah untuk KIP dengan isian upah dan tenaga kerja tidak konsisten.
 
 
-## Imputasi upah
-# upah SKIM23 TL cek konsistensi
-# upah sumber STPIM22 21
-# upah no histori
+#### Perbaikan konsistensi upah hasil imputasi dari STPIM22 dan STPIM21
+
+```{r}
+#Cek apakah imputasi upah konsisten dengan total tk
+cek_upah <- stpim_imptpt |>
+  mutate(cek_upahprod = ifelse((r301a_1i > 0 & r206c_1 > 0), "ok", "inkonsisten"),
+         cek_upahlain = ifelse((r301b_3i > 0 & r206c_2 > 0), "ok", "inkonsisten"),
+         cek_upah     = ifelse((cek_upahprod == "ok" & cek_upahlain == "ok"), "ok", "inkonsisten")) |>
+  #perbaikan konsistensi
+  mutate(r301a_1i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+                           r206c_1/r206a*r301ci, r301a_1i),
+         r301a_2i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+                           0, r301a_2i),
+         r301b_3i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+                           r206c_2/r206a*r301ci, r301b_3i),
+         r301b_4i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain)))
+                           , 0, r301b_4i),
+         r301ci = rowSums(across(c(r301a_1i, r301a_2i, r301b_3i, r301b_4i)), na.rm = TRUE)) |>
+  select(-cek_upahprod, -cek_upahlain, -cek_upah)
+
+```
 
 
-### Perbaikan konsistensi upah SKIM23 TL
+#### Perbaikan konsistensi upah dari isian SKIM23 TL
 
-#Mengecek konsistensi upah dari isian yang respon dengan tenaga kerja. Kemudian melakukan perbaikan isian upah untuk KIP dengan isian upah dan tenaga kerja tidak konsisten.
-
-
+```{r}
 #Cek apakah isian upah SKIM23 TL konsisten dengan total tk
 cekskim23tl_upah <- stpim_imptpt |>
   left_join(skim23_tl_target |>
               select(kip, r301a_1, r301a_2, r301b_3, r301b_4, r301c), by = "kip") |>
-  mutate(cek_upahprod = ifelse((r301a_1 > 0 & r206c_1 > 0), "ok", "inkonsisten"),
+  mutate(across(c(r301a_1, r301a_2, r301b_3, r301b_4, r301c), as.numeric),
+         cek_upahprod = ifelse((r301a_1 > 0 & r206c_1 > 0), "ok", "inkonsisten"),
          cek_upahlain = ifelse((r301b_3 > 0 & r206c_2 > 0), "ok", "inkonsisten"),
          cek_upah     = ifelse((cek_upahprod == "ok" & cek_upahlain == "ok"), "ok", "inkonsisten")) |>
   #perbaikan konsistensi
-  mutate(r301a_1i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+  mutate(r301a_1im = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
                            r206c_1/r206a*r301c, r301a_1),
-         r301a_2i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+         r301a_2im = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
                            0, r301a_2),
-         r301b_3i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
+         r301b_3im = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain))),
                            r206c_2/r206a*r301c, r301b_3),
-         r301b_4i = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain)))
+         r301b_4im = ifelse((cek_upahprod == "ok" & (cek_upahlain != "ok" | is.na(cek_upahlain)))
                            , 0, r301b_4),
-         r301ci = rowSums(across(c(r301a_1i, r301a_2i, r301b_3i, r301b_4i)), na.rm = TRUE))
-
+         r301cim = rowSums(across(c(r301a_1im, r301a_2im, r301b_3im, r301b_4im)), na.rm = TRUE)) 
 
 #format numerik
 options(scipen = 999) 
 
-
 ```
 
 
+#### Perbaikan kewajaran upah
 
-
-
-
-
-
-
-
-
-
-
-
-
-# Imputasi tenaga kerja dan upah
-
-## Load data sumber imputasi
-
-```{r, warning=FALSE}
-stpim22 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg22.xlsx")
-stpim21 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg21e.xlsx")
-#stpim20 <- read_xlsx("D:/##AYUPA DESKTOP 2/DATA INDUSTRI/mfg20f.xlsx")
-
-stpim22 <- stpim22 |>
-  mutate(kbli2_stpim = substr(Disic522, 1, 2))
-
-stpim21 <- stpim21 |>
-  mutate(kbli2_stpim = substr(Disic521, 1, 2))
-```
-
-## Cek irisan target imputasi dengan STPIM22 dan STPIM21
-
-Cek irisan ini bertujuan untuk mendapatkan basis data dari data historis masing-masing KIP yang ingin diimputasi.
-
-```{r }
-# irisan target imputasi dengan stpim22
-stpim22_imptpt <- stpim22 |>
-  filter(Kipb %in% target_imptpt$kip) 
-
-# sisa target imputasi & tambahan informasi variabel tk, inves, omset dari dpa23
-sisa_target22 <- target_imptpt |>
-  filter(!(kip %in% stpim22_imptpt$Kipb)) |>
-  left_join(dpa23, by = "kip") |>
-  select(kip, prov.x, kab.x, b2r217.x, kbli2_dpa23, b2r205.x, b2r210.x, b2r224.x, b2r225.x, b2r226.x, b2r218.x) |>
-  rename(prov = prov.x,
-         kab  = kab.x,
-         b2r217 = b2r217.x,
-         b2r205 = b2r205.x,
-         b2r210 = b2r210.x,
-         b2r224 = b2r224.x,
-         b2r225 = b2r225.x,
-         b2r226 = b2r226.x,
-         b2r218 = b2r218.x)
-
-# irisan target imputasi dengan stpim21
-stpim21_imptpt <- stpim21 |>
-  filter(Kipb %in% sisa_target22$kip)
-
-# sisa target imputasi 
-sisa_target21 <- sisa_target22 |>
-  filter(!(kip %in% stpim21_imptpt$Kipb))
-
-```
-
-Dari target imputasi TPT sebanyak **`r nrow(target_imptpt)`**, ditemukan irisan dengan data STPIM tahun-tahun sebelumnya sebagai sumber imputasi, a.l. sebanyak **`r nrow(stpim22_imptpt)` KIP dari STPIM22, `r nrow(stpim21_imptpt)` dari STPIM21**, sisanya `r nrow(sisa_target21)` KIP tidak ditemukan di STPIM21 dan STPIM22. Basis data STPIM20 tidak digunakan karena irisan yang tersisa tinggal KIP yang semuanya nonrespon di STPIM20.
-
-**`r nrow(sisa_target21)` KIP tanpa historis data STPIM akan diimputasi dengan tenaga kerja = 20** dengan pertimbangan bahwa skala usaha berdasarkan variabel tenaga kerja, investasi, dan omset di DPA23nya masing-masing adalah skala usaha mikro dan kecil.
-
-## Mapping variabel dan imputasi tenaga kerja dan upah sebagai variabel dasar
-
-Langkah-langkah yang dilakukan di tahap ini:
-
-- Mapping nama variabel STPIM21, STPIM22, SKIM23 (acuan variabel SKIM23).
-- Mensinkronkan variabel STPIM21 dan STPIM22 sesuai dengan SKIM23.
-- Melakukan imputasi tenaga kerja dengan tenaga kerja tahun sebelumnya.
-- Melakukan imputasi upah dengan upah sebelumnya dengan adjustment rata-rata pertumbuhan UMP sebesar 7,5 persen.
-[Tautan sumber dasar imputasi - Klik di sini](https://www.suara.com/news/2023/01/01/190351/rincian-lengkap-ump-2023-yang-mulai-berlaku-1-januari)
-
-```{r }
-#menghapus tahun di nama variabel
-stpim22_imptpt <- stpim22_imptpt |>
-  rename_with(~ gsub("22$", "", .))
-
-stpim21_imptpt <- stpim21_imptpt |>
-  rename_with(~ gsub("21$", "", .))
-
-# Mapping nama variabel
-var22 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
-        # TK dan Upah
-           "Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon", #tk_laki
-           "Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon", #tk_perem
-           "Lprnop", "Lprnon", #tk_prod
-           "Lnpnop", "Lnpnon", #tk_lain
-           "Ltlnof", #tk_asing
-           "Zptvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-           "Zntvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
-           "Zpdvcu", #pengpek_prod
-           "Zndvcu") #pengpek_lain
-        
-         # Komposisi Biaya INPUT
-         #  "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
-         #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
-
-
-var21 <- c("Kipb", "Dprovi", "Dkabup", "Disic5", "Year",
-        # TK dan Upah
-           "Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", "Pttlpi", "Pttlpa", "Pttlni", "Pttlna",   #tk_laki
-           "Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", "Pttppi", "Pttppa", "Pttpni", "Pttpna",   #tk_perem 
-           "Ptdpri", "Ptdpra", "Ptdnpi", "Ptdnpa", #tk_takdibayar (dimasukkan ke tk_perem saja)
-           "Lprnol", "Lprnof", #tk_prod
-           "Lnpnol", "Lnpnof", #tk_lain
-           "Lprnof", "Lnpnof", #tk_asing
-           "Zptvcu", "Zpevcu", "Zphvcu", "Zprvcu", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-           "Zntvcu", "Znevcu", "Znhvcu", "Znrvcu", #pengpek_lain = upah_tklain + pengpeklain_tklain
-           "Zpdvcu", #pengpek_prod
-           "Zndvcu") #pengpek_lain
-      
-        # Komposisi Biaya INPUT
-        #   "Rdnvcu", "Rimvcu", #bbakupen_dom #bbakupen_imp
-        #   "Efuvcu", "Eplvcu", "Enpvcu", #bbakar #listrik_pln #listrik_nonpln
-
-
-varskim23 <- c("tahun", "kip", "prov", "kab", "r203", "Disic5", "b2r217",
-          # TK dan Upah
-               "r206b_1", #tk_laki
-               "r206b_2", #tk_perem
-               "r206c_1", #tk_prod
-               "r206c_2", #tk_lain
-               "r206d", #tk_asing
-               "r206a", #total_tk
-               "r301a_1", "r301a_2", #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-               "r301b_1", "r301b_2", #pengpek_lain = upah_tklain + pengpeklain_tklain
-               "r301c") #total_upah
-          
-          # Komposisi Biaya INPUT
-          #      "r501k5_sum", "r501k7_sum", #bbakupen_dom #bbakupen_imp
-          #       "r303a", "r304c", #bbakar #listrik
-       
-
-# Sync variabel dan nama var ke SKIM23 & Imputasi TK dan Pengeluaran Pekerja
-stpim22_imptpt <- stpim22_imptpt |>
-  mutate(tahun   = 2022,
-         b2r217    = NA,
-         r206b_1 = rowSums(across(c("Lpmnop", "Lpmnon", "Lnmnop", "Lnmnon")), na.rm = TRUE),  #tk_laki
-         r206b_2 = rowSums(across(c("Lpwnop", "Lpwnon", "Lnwnop", "Lnwnon")), na.rm = TRUE), #tk_perem
-         r206c_1 = rowSums(across(c("Lprnop", "Lprnon")), na.rm = TRUE), #tk_prod
-         r206c_2 = rowSums(across(c("Lnpnop", "Lnpnon")), na.rm = TRUE), #tk_lain
-         r206d   = Ltlnof, #tk_asing
-         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
-         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
-         r301a_2 = 1.075 * Zprvcu, #pengpeklain_tkprod
-         r301b_1 = 1.075 * Zntvcu, #upah_tklain
-         r301b_2 = 1.075 * Znrvcu, #pengpeklain_tklain
-         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
-         ) |>
-  rename(kip       = Kipb,
-         prov      = Dprovi,
-         kab       = Dkabup,
-         r203      = Year)
-
-stpim21_imptpt <- stpim21_imptpt |>
-  mutate(tahun = 2021,
-         b2r217    = NA,
-         r206b_1 = rowSums(across(c("Pwtlpi", "Pwtlpa", "Pwtlni", "Pwtlna", 
-                                    "Pttlpi", "Pttlpa", "Pttlni", "Pttlna")), na.rm = TRUE),  #tk_laki
-         r206b_2 = rowSums(across(c("Pwtppi", "Pwtppa", "Pwtpni", "Pwtpna", 
-                                    "Pttppi", "Pttppa", "Pttpni", "Pttpna", 
-                                    "Ptdpri", "Ptdpra", "Ptdnpi", "Ptdnpa")), na.rm = TRUE), #tk_perem
-         r206c_1 = rowSums(across(c("Lprnol", "Lprnof")), na.rm = TRUE), #tk_prod
-         r206c_2 = rowSums(across(c("Lnpnol", "Lnpnof")), na.rm = TRUE), #tk_lain
-         r206d   = rowSums(across(c("Lprnof", "Lnpnof")), na.rm = TRUE), #tk_asing
-         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
-         r301a_1 = 1.075 * Zptvcu, #upah_tkprod
-         r301a_2 = 1.075 * rowSums(across(c("Zpevcu", "Zphvcu", "Zprvcu")), na.rm = TRUE), #pengpeklain_tkprod
-         r301b_1 = 1.075 * Zntvcu, #upah_tklain
-         r301b_2 = 1.075 * rowSums(across(c("Znevcu", "Znhvcu", "Znrvcu")), na.rm = TRUE), #pengpeklain_tklain
-         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE) #total_upah
-         ) |>
-  rename(kip       = Kipb,
-         prov      = Dprovi,
-         kab       = Dkabup,
-         r203      = Year)
-
-```
-
-- Mengimputasi sisa KIP tanpa histori data dengan TK = 20, Upah = tk x 12 bulan operasional x UMP (asumsi UMP Jabar & Jateng 1,9juta)
+- Menyatukan dataset perbaikan konsistensi upah antara sumber STPIM dan SKIM23.
+- Mengecek kewajaran upah per tenaga kerja per bulan operasi.
 
 ```{r}
-sisa_target21 <- sisa_target21 |>
-  mutate(tahun = 0000,
-         r203    = 12,  #bulan operasi
-         r206b_1 = 20,  #tk_laki
-         r206b_2 =  0,  #tk_perem
-         r206c_1 = 20,  #tk_prod
-         r206c_2 =  0,  #tk_lain
-         r206d   =  0, #tk_asing
-         r206a   = rowSums(across(c("r206b_1", "r206b_2")), na.rm = TRUE), #total_tk
-         r301a_1 = r206b_1 * r203 * 1900, #upah_tkprod (asumsi: produksi 12 bulan, UMP Jabar Jateng ~1,9juta)
-         r301a_2 =  0, #pengpeklain_tkprod
-         r301b_1 =  0, #upah_tklain
-         r301b_2 =  0, #pengpeklain_tklain
-         r301c   = rowSums(across(c("r301a_1", "r301a_2", "r301b_1", "r301b_2")), na.rm = TRUE), #total_upah
-         b2r217    = NA,
-         Disic5    = NA
-         )
+cek_upah <- cek_upah |>
+  left_join(cekskim23tl_upah |>
+              select(kip, r301a_1im, r301a_2im, r301b_3im, r301b_4im, r301cim), by = "kip") |>
+  #cek kewajaran data upah per tk per bulan: 400ribu - 40juta per bulan per tk
+  mutate(cek_upahptki   = r301ci/r206a/r203,
+         cek_upahptkim  = r301cim/r206a/r203,
+         cek_wajarupahi = ifelse(cek_upahptki <= 400 | cek_upahptki >= 40000, "tidak wajar", "ok"),
+         cek_wajarupahim = ifelse(cek_upahptkim <= 400 | cek_upahptkim >= 40000, "tidak wajar", "ok")) |>
+  mutate(r301a_1imp       = ifelse(cek_wajarupahim == "ok", r301a_1im, r301a_1i),
+         r301a_2imp       = ifelse(cek_wajarupahim == "ok", r301a_2im, r301a_2i),
+         r301b_3imp       = ifelse(cek_wajarupahim == "ok", r301b_3im, r301b_3i),
+         r301b_4imp       = ifelse(cek_wajarupahim == "ok", r301b_4im, r301b_4i),
+         r301cimp         = ifelse(cek_wajarupahim == "ok", r301cim, r301ci),
+         cek301cimp    = r301cimp - rowSums(across(c(r301a_1imp, r301a_2imp, r301b_3imp, r301b_4imp)), na.rm = TRUE),
+         cekupahtkimp     = ifelse(cek_wajarupahim == "ok", cek_upahptkim, cek_upahptki),
+         cek_wajarupahimp = ifelse(cek_wajarupahim == "ok", cek_wajarupahim, cek_wajarupahi)) |>
+  #perbaikan kasus khusus indikasi kelebihan digit
+  mutate(across(c(r301a_1imp, r301a_2imp, r301b_3imp, r301b_4imp, r301cimp, cekupahtkimp), 
+              ~ case_when(
+                kip == 321311184 ~ .x / 10,
+                kip == 361390205 ~ .x / 1000,
+                TRUE ~ .x
+              )))
+
 ```
 
-- Menyatukan semua sumber data historis imputasi menjadi satu dataset.
+
+#### Hasil imputasi tenaga kerja dan upah 
 
 ```{r}
-# Combine dataset STPIM22, STPIM21, dan no histori KIP
-stpim_imptpt <- stpim22_imptpt |>
-  select(all_of(varskim23)) |>
-  bind_rows(select(stpim21_imptpt, all_of(varskim23))) |>
-  bind_rows(select(sisa_target21, all_of(varskim23))) |>
-  left_join(target_imptpt[c("kip", "b2r217")], by = "kip") |>
-  select(-b2r217.x) |>
-  rename(b2r217 = b2r217.y) |> 
-  mutate(kbli2_dpa23 = substr(b2r217, 1, 2),
-         kbli2_stpim = substr(Disic5, 1, 2)) |>
-  # Imputasi bulan operasi karena ada NA
-  mutate(r203 = ifelse(is.na(r203), median(r203, na.rm = TRUE), r203))
-
+#Menyatukan imputasi upah ke dataset utama
+stpim_imptpt <- stpim_imptpt |>
+  left_join(cek_upah |>
+              select(kip, r301a_1imp, r301a_2imp, r301b_3imp, r301b_4imp, r301cimp), by = "kip") |>
+  rename(r301a_1 = r301a_1imp,
+         r301a_2 = r301a_2imp,
+         r301b_3 = r301b_3imp,
+         r301b_4 = r301b_4imp,
+         r301c   = r301cimp) |>
+  select(-r301a_1i, -r301a_2i, -r301b_3i, -r301b_4i, -r301ci)
+  
 ```
+
+
+
+
+
+
+
 
 
 
