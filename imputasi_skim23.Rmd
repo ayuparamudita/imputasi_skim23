@@ -589,12 +589,12 @@ stpim_imptpt <- stpim_imptpt |>
 ```
 
 
-### Perbaikan konsistensi upah
+## Perbaikan konsistensi upah
 
 - Mengecek konsistensi upah dengan tenaga kerja. Kemudian melakukan perbaikan isian upah untuk KIP dengan isian upah dan tenaga kerja tidak konsisten.
 
 
-#### Perbaikan konsistensi upah hasil imputasi dari STPIM22 dan STPIM21
+### Perbaikan konsistensi upah hasil imputasi dari STPIM22 dan STPIM21
 
 ```{r}
 #Cek apakah imputasi upah konsisten dengan total tk
@@ -617,7 +617,7 @@ cek_upah <- stpim_imptpt |>
 ```
 
 
-#### Perbaikan konsistensi upah dari isian SKIM23 TL
+### Perbaikan konsistensi upah dari isian SKIM23 TL
 
 ```{r}
 #Cek apakah isian upah SKIM23 TL konsisten dengan total tk
@@ -645,10 +645,10 @@ options(scipen = 999)
 ```
 
 
-#### Perbaikan kewajaran upah
+## Perbaikan kewajaran upah
 
 - Menyatukan dataset perbaikan konsistensi upah antara sumber STPIM dan SKIM23.
-- Mengecek kewajaran upah per tenaga kerja per bulan operasi.
+- Mengecek kewajaran upah per tenaga kerja per bulan operasi dengan range 400ribu - 40juta per bulan per tenaga kerja.
 
 ```{r}
 cek_upah <- cek_upah |>
@@ -678,7 +678,7 @@ cek_upah <- cek_upah |>
 ```
 
 
-#### Hasil imputasi tenaga kerja dan upah 
+### Hasil imputasi tenaga kerja dan upah 
 
 ```{r}
 #Menyatukan imputasi upah ke dataset utama
@@ -692,15 +692,9 @@ stpim_imptpt <- stpim_imptpt |>
          r301c   = r301cimp) |>
   select(-r301a_1i, -r301a_2i, -r301b_3i, -r301b_4i, -r301ci)
   
+print(stpim_imptpt)
+
 ```
-
-
-
-
-
-
-
-
 
 
 # Imputasi komponen biaya input
@@ -713,14 +707,16 @@ Imputasi komponen biaya input dilakukan dengan pendekatan pertumbuhan komponen b
 
 ```{r}
 stpim22_tpt <- stpim22 |>
-  filter(kbli2_stpim == 13 | kbli2_stpim == 14) |>
+  mutate(kbli2 = substr(Disic522, 1, 2)) |>
+  filter(kbli2 == 13 | kbli2 == 14) |>
   rowwise() |>  # Ensure operations are performed row-wise
   mutate(skala_tk = sum(Lprnop22, Lprnon22, Lnpnop22, Lnpnon22, na.rm = TRUE)) |> 
   mutate(skala_tk = ifelse(skala_tk > 99, "B", "S")) |> 
   ungroup()  # Remove row-wise grouping for further operations
 
 stpim21_tpt <- stpim21 |>
-  filter(kbli2_stpim == 13 | kbli2_stpim == 14) |>
+  mutate(kbli2 = substr(Disic521, 1, 2)) |>
+  filter(kbli2 == 13 | kbli2 == 14) |>
   rowwise() |>  # Ensure operations are performed row-wise
   mutate(skala_tk = sum(Lprnol21, Lprnof21, Lnpnol21, Lnpnof21, na.rm = TRUE)) |> 
   mutate(skala_tk = ifelse(skala_tk > 99, "B", "S")) |> 
@@ -729,16 +725,16 @@ stpim21_tpt <- stpim21 |>
 
 #Mengelompokkan berdasarkan provinsi dan kbli2 
 sum_inp22 <- stpim22_tpt |>
-  group_by(Dprovi22, kbli2_stpim, skala_tk) |>
+  group_by(Dprovi22, kbli2, skala_tk) |>
   summarise(total_inp22 = sum(Iinput22, na.rm = TRUE), 
-            mean_inp22 = mean(Iinput22, na.rm = TRUE),        #mean input untuk imputasiobservasi yang no histori
+            mean_inp22  = mean(Iinput22, na.rm = TRUE),        #mean input untuk imputasi observasi yang no histori
             .groups = "drop") |>
-  mutate(prov_kbli2_skala = paste(Dprovi22, kbli2_stpim, skala_tk, sep = ""))
+  mutate(prov_kbli2_skala = paste(Dprovi22, kbli2, skala_tk, sep = ""))
 
 sum_inp21 <- stpim21_tpt |>
-  group_by(Dprovi21, kbli2_stpim, skala_tk) |>
+  group_by(Dprovi21, kbli2, skala_tk) |>
   summarise(total_inp21 = sum(Iinput21, na.rm = TRUE), .groups = "drop") |>
-  mutate(prov_kbli2_skala = paste(Dprovi21, kbli2_stpim, skala_tk, sep = ""))
+  mutate(prov_kbli2_skala = paste(Dprovi21, kbli2, skala_tk, sep = ""))
 
 
 #Menghitung pertumbuhan biaya input per provinsi dan kbli2
@@ -758,11 +754,11 @@ sum_inp21 <- sum_inp21 |>
 ```{r}
 #Filter data 
 sum_inp21_13 <- sum_inp21 |>
-  filter(kbli2_stpim == 13) |>
+  filter(kbli2 == 13) |>
   filter(!(is.na(grwt_inp)))
          
 sum_inp21_14 <- sum_inp21 |>
-  filter(kbli2_stpim == 14) |>
+  filter(kbli2 == 14) |>
   filter(!(is.na(grwt_inp)))
          
 
@@ -806,9 +802,9 @@ ggplot(sum_inp21_14, aes(x = reorder(Dprovi21, grwt_inp), y = grwt_inp)) +
 #Match pertumbuhan per provinsi, KBLI, dan skala dari data historis dengan target imputasi 2023
 tab_stpim_imptpt <- stpim_imptpt |>
   mutate(skala_tk = ifelse(r206a > 99, "B", "S")) |> 
-  group_by(prov, kbli2_stpim, skala_tk) |>
+  group_by(prov, kbli2, skala_tk) |>
   summarise(total_nimp = n(), .groups = "drop") |>
-  mutate(prov_kbli2_skala = paste(prov, kbli2_stpim, skala_tk, sep = "")) |>
+  mutate(prov_kbli2_skala = paste(prov, kbli2, skala_tk, sep = "")) |>
   left_join(sum_inp21[, c("prov_kbli2_skala", "grwt_inp")], by = "prov_kbli2_skala") |>
   # Adjustment for no history data
   mutate(grwt_inp_imp = ifelse(is.na(grwt_inp), median(grwt_inp, na.rm = TRUE), grwt_inp)) |>  
@@ -837,20 +833,17 @@ stpim_imptpt_input <- stpim_imptpt |>
     )[var2221_inp], 
     by = "kip") |>
   mutate(skala_tk = ifelse(r206a > 99, "B", "S"),
-         prov_kbli2_skala = paste(prov, kbli2_stpim, skala_tk, sep = "")) |>
+         prov_kbli2_skala = paste(prov, kbli2, skala_tk, sep = "")) |>
   left_join(tab_stpim_imptpt[, c("prov_kbli2_skala", "grwt_inp_imp")], by = "prov_kbli2_skala") |>
   #adjust dengan growth
   mutate(r501k5_sum = Rdnvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_dom
          r501k7_sum = Rimvcu * ((100 + grwt_inp_imp) / 100),              #bbakupen_imp
          r303a      = Efuvcu * ((100 + grwt_inp_imp) / 100),              #bbakar
          r304c      = (Eplvcu + Enpvcu) * ((100 + grwt_inp_imp) / 100),   #listrik
-         cek_input  = r501k5_sum + r501k7_sum + r303a + r304c
+         cektotal_input  = r501k5_sum + r501k7_sum + r303a + r304c
   ) |>
-  select(tahun, kip, prov, kab, Disic5, kbli2_stpim, skala_tk, prov_kbli2_skala, 
-         grwt_inp_imp, r501k5_sum, r501k7_sum, r303a, r304c, cek_input)
-
-#format numerik
-options(scipen = 999) 
+  select(tahun, kip, prov, kab, kbli2, skala_tk, prov_kbli2_skala, 
+         grwt_inp_imp, r501k5_sum, r501k7_sum, r303a, r304c, cektotal_input)
 
 ```
 
@@ -860,14 +853,15 @@ options(scipen = 999)
 #Match rata-rata input per provinsi, KBLI, dan skala dari data historis dengan target imputasi 2023
 tab_stpim_imptpt <- tab_stpim_imptpt |>
   left_join(sum_inp22[, c("prov_kbli2_skala", "mean_inp22")], by = "prov_kbli2_skala") |>
-  # Adjustment untuk observasi yang tidak memiliki history data dengan nilai persentil-25 
+  # Adjustment untuk observasi yang tidak punya history data dengan nilai persentil-25 (professional justification) 
   # karena hanya ada 1 observasi NA dari provinsi Aceh
   mutate(mean_inp22_imp = ifelse(is.na(mean_inp22), quantile(mean_inp22, probs = 0.25, na.rm = TRUE), mean_inp22))
   
 #Ceplokan ke dataset stpim_imptpt_input
 stpim_imptpt_input <- stpim_imptpt_input |>
-  left_join(tab_stpim_imptpt |> select(prov_kbli2_skala, mean_inp22_imp), by = "prov_kbli2_skala") |>
-  mutate(r501k5_sum = ifelse((is.na(cek_input) | cek_input == 0), mean_inp22_imp, r501k5_sum)) |>
+  left_join(tab_stpim_imptpt |> 
+              select(prov_kbli2_skala, mean_inp22_imp), by = "prov_kbli2_skala") |>
+  mutate(r501k5_sum = ifelse((is.na(cektotal_input) | cektotal_input == 0), mean_inp22_imp, r501k5_sum)) |>
   mutate(across(c(r501k5_sum, r501k7_sum, r303a, r304c), ~ replace_na(.x, 0)),
          input  = r501k5_sum + r501k7_sum + r303a + r304c)
 
@@ -876,7 +870,6 @@ stpim_imptpt <- stpim_imptpt |>
   left_join(stpim_imptpt_input |> 
               select(kip, r501k5_sum, r501k7_sum, r303a, r304c, input), by = "kip")
   
-
 ```
 
 # Imputasi output
@@ -897,24 +890,26 @@ stpim22_tpt_ml <- stpim22_tpt |>
   select(Kipb, Dprovi22, Disic522, Year, Output22, Iinput22, 
          Lprnop22, Lprnon22, Lnpnop22, Lnpnon22, 
          Zptvcu22, Zprvcu22, Zntvcu22, Znrvcu22) |>
-  mutate(kbli2_stpim = substr(Disic522, 1, 2),
+  mutate(kbli2       = substr(Disic522, 1, 2),
          r206a       = rowSums(across(c("Lprnop22", "Lprnon22",                       #tk_prod
                                         "Lnpnop22", "Lnpnon22")), na.rm = TRUE),      #tk_lain
-         r301c       = rowSums(across(c("Zptvcu22", "Zprvcu22",       #pengpek_prod = upah_tkprod + pengpeklain_tkprod
-                                        "Zntvcu22", "Znrvcu22")))) |> #pengpek_lain = upah_tklain + pengpeklain_tklain
+         r301c       = rowSums(across(c("Zptvcu22", "Zprvcu22",       
+                                        #pengpek_prod = upah_tkprod + pengpeklain_tkprod
+                                        "Zntvcu22", "Znrvcu22")))) |> 
+                                        #pengpek_lain = upah_tklain + pengpeklain_tklain
   rename(kip    = Kipb,
          prov   = Dprovi22,
          r203   = Year,
          output = Output22,
          input  = Iinput22) |>
-  select(kip, prov, kbli2_stpim, r203, r206a, r301c, output, input)
+  select(kip, prov, kbli2, r203, r206a, r301c, output, input)
 
 # Cleaning data karena masih ada data tidak wajar: input 0
 stpim22_tpt_ml <- stpim22_tpt_ml |>
   filter(input > 0)
 
 # Melihat pola data >> menyingkirkan outlier
-ggplot(stpim22_tpt_ml, aes(x = input, y = output, color = as.factor(kbli2_stpim))) +
+ggplot(stpim22_tpt_ml, aes(x = input, y = output, color = as.factor(kbli2))) +
   geom_point(alpha = 0.7) +  # Scatter points with transparency
   labs(
     title = "Scatter Plot of Output vs Input by KBLI2",
@@ -994,7 +989,7 @@ Setelah mencoba untuk mengimputasi output menggunakan model yang telah di-traini
 ```{r}
 # Modifikasi data agar dapat diterapkan model machine learning
 stpim_imptpt_output <- stpim_imptpt |>
-  select(kip, prov, kbli2_stpim, r203, r206a, r301c, input) |>
+  select(kip, prov, kbli2, r203, r206a, r301c, input) |>
   mutate(prov = ifelse(prov == 11, 13, prov)) 
 
 ```
@@ -1030,7 +1025,7 @@ stpim_imptpt_output <- stpim_imptpt_output |>
 #menghitung rata-rata tk, input, dan output data estimasi hasil machine learning
 stpim_imptpt_output_rasio <- stpim_imptpt_output |>
   filter(cek_ntbupah > 0) |>
-  group_by(kbli2_stpim, prov) |>
+  group_by(kbli2, prov) |>
   summarise(avg_tk     = mean(r206a, na.rm = TRUE),
             avg_input  = mean(input, na.rm = TRUE),
             avg_output = mean(output, na.rm = TRUE))
@@ -1038,11 +1033,11 @@ stpim_imptpt_output_rasio <- stpim_imptpt_output |>
 #mengecek kewajaran observasi yang ntb<upah
 stpim_imptpt_output_nonwjr <- stpim_imptpt_output |>
   filter(cek_ntbupah < 0) |>
-  left_join(stpim_imptpt_output_rasio, by = c("prov", "kbli2_stpim")) |>
+  left_join(stpim_imptpt_output_rasio, by = c("prov", "kbli2")) |>
   #coba rasio output-tk
   mutate(output_rasio = avg_output/avg_tk * r206a,
          ntb_rasio    = output_rasio - input,
-         cek_ntbupah = ntb_rasio - r301c) |>
+         cek_ntbupah  = ntb_rasio - r301c) |>
   #>> masih ada yang ntb negatif dan ntb<upah, maka adjustment rasio dari rasio output-input
   mutate(output_rasio = avg_output/avg_input * input,
          ntb_rasio    = output_rasio - input,
@@ -1067,34 +1062,14 @@ Data final imputasi sudah didapatkan namun dengan beberapa catatan, a.l:
 
 ```{r}
 #Jadikan satu dengan main dataset
-stpim_imptpt <- stpim_imptpt |>
+skim23_imptpt <- stpim_imptpt |>
   left_join(stpim_imptpt_output |> 
               select(kip, output, ntb), by = "kip") |>
   #menyesuaikan nama variabel dengan SKIM23
-  rename(r503k6_sum = output,
-         r201_kode  = Disic5)
+  rename(r503k6_sum = output) |>
+  #menambah variabel klasifikasi skim23 tl
+  mutate(skim23_tl = ifelse(tahun == 2024, "SKIM23 TL", NA))
 
-#Tambahkan variabel produksi
-stpim_imptpt <- stpim_imptpt |>
-  left_join(stpim22_tpt |>
-              select(Kipb, Produksi), by = c("kip" = "Kipb")) |>
-  rename(Produksi22 = Produksi) |>
-  left_join(stpim21_tpt |>
-              select(Kipb, Produksi), by = c("kip" = "Kipb")) |>
-  rename(Produksi21 = Produksi) |>
-  mutate(r504a = ifelse(is.na(Produksi22), Produksi21, Produksi22)) |>
-  mutate(r504a = toupper(as.character(r504a)))
-
-#Select variabel utama
-skim23_imptpt <- stpim_imptpt |>
-  select(kip, prov, kab, r203, r201_kode,
-         r206a, r206b_1, r206b_2, r206c_1, r206c_2, r206d,   #tk
-         r301a_1, r301a_2, r301b_1, r301b_2, r301c,          #pengeluaran pekerja
-         r303a, r304c,                                       #bahan bakar #listrik
-         r501k5_sum, r501k7_sum,                             #bahan baku penolong domestik #bahan baku penolong impor
-         r503k6_sum,                                         #produksi barang
-         r504a,                                              #nama komoditas produksi
-         input, ntb)
 
 write_xlsx(skim23_imptpt, "skim23_imptpt.xlsx")
 
