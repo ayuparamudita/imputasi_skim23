@@ -1,12 +1,18 @@
 ---
 title: "Imputasi SKIM23"
 author: "Ayu Paramudita"
+date: "`r Sys.Date()`"
 output:
+  pdf_document:
+    toc: true
+    toc_depth: '2'
   html_document:
     toc: true
     toc_depth: 2
+  word_document:
+    toc: true
+    toc_depth: '2'
 code-fold: true
-date: "`r Sys.Date()`"
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +30,20 @@ library(caret)
 library(Metrics)
 library(randomForest)
 ```
+
+# Pendahuluan
+
+Dokumen ini adalah dokumentasi proses imputasi SKIM 2023. Data yang diimputasi meliputi data tidak lengkap dari webentry SKIM 2023 dan observasi yang eligibel namun belum masuk ke webentry. Adapun variabel dan metode imputasi yang digunakan sebagai berikut:
+
+- Bulan operasi : data historis
+
+- Tenaga kerja : data historis
+
+- Pengeluaran pekerja : data historis dengan adjustment pertumbuhan rata-rata upah minimum
+
+- Biaya input, meliputi bahan baku dan penolong domestik, bahan baku penolong impor, bahan bakar, dan listrik : data historis dengan adjustment pertumbuhan input menurut kbli2, provinsi, dan skala tk
+
+- Total output : machine learning (Random Forest dan K-Nearest Neighbour)
 
 
 # Persiapan data
@@ -1057,8 +1077,8 @@ stpim_imptpt_output <- stpim_imptpt_output |>
 - Mengkompile data imputasi final
 
 Data final imputasi sudah didapatkan namun dengan beberapa catatan, a.l:
-  - Nama komoditas produksi (r504a) ada yang belum terisi karena tidak adanya data historis. 
-  - Ada beberapa nama komoditas yang tidak relevan dengan TPT perlu pengecekan lebih lanjut.
+- Nama komoditas produksi (r504a) ada yang belum terisi karena tidak adanya data historis. 
+- Ada beberapa nama komoditas yang tidak relevan dengan TPT perlu pengecekan lebih lanjut.
 
 ```{r}
 #Jadikan satu dengan main dataset
@@ -1076,20 +1096,7 @@ write_xlsx(skim23_imptpt, "skim23_imptpt.xlsx")
 ```
 
 
-```{r}
 
-## variabel imputasi
-## model apa imputasi: rasio >> sd input? ml >> output?
-
-## bulan operasional: historis
-## tk : historis
-## pengeluaran pekerja : historis w/ adjustment growth avg UMP
-
-## biaya input : historis w/ adjustment growth input by kbli2 & prov & skala tk
-## breakdown input: bb dom, bb impor, bbakar, listrik
-
-## total output : ml
-```
 
 
 
