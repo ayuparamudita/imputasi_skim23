@@ -1,0 +1,110 @@
+---
+title: "Bridging STPIM-SKIM"
+author: "Ayu Paramudita"
+date: "`r Sys.Date()`"
+output:
+  word_document:
+    toc: true
+    toc_depth: '2'
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    toc: true
+    toc_depth: '2'
+code-fold: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(dplyr)
+library(knitr)
+```
+
+## Load data
+
+```{r}
+
+stpim23 <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/STPIM (CAWI) NASIONAL tahun 2024.xlsx")
+skim23  <- read_xlsx("D:/##AYUPA DESKTOP 2/Imputasi SKIM23/SKIM.IIADetail NASIONAL tahun 2024.xlsx")
+
+```
+
+
+## Data STPIM yang ber-KBLI 13 dan 14
+
+```{r}
+
+stpim23_tpt <- stpim23 |>
+  mutate(kbli2 = substr(r201_kode, 1, 2)) |>
+  filter(kbli2 == 13 | kbli2 == 14)
+
+```
+
+Terdapat `r nrow(stpim23_tpt)` perusahaan ber-KBLI 13 dan 14 yang tercatat di STPIM. Perusahaan ini semestinya menjadi target SKIM.
+
+
+## Bridging variabel STPIM ke SKIM
+
+```{r}
+# Cek variabel SKIM yang di STPIM tidak ada
+missing_vars <- setdiff(names(skim23), names(stpim23))
+print(missing_vars)
+
+
+```
+
+Terdapat `r length(missing_vars)` variabel yang tidak ada/berbeda di STPIM.
+
+Variabel khusus di SKIM yang tidak ditanyakan di STPIM, a.l.:
+
+- R207          Bahan baku daur ulang
+
+- R208a         Jenis bahan baku daur ulang kertas
+
+- R208b         Jenis bahan baku daur ulang logam
+
+- R208c         Jenis bahan baku daur ulang plastik
+
+- R208d         Jenis bahan baku daur ulang kaca
+
+- R208e         Jenis bahan baku daur ulang lainnya
+
+- R208e_lainnya Jenis bahan baku daur ulang lainnya tuliskan
+
+- R209          Jumlah mesin utama
+
+- R210          Jenis mesin utama
+
+- R211          Rata-rata umur mesin utama
+
+- R212          Tahun restrukturisasi
+
+Jika variabel di atas ini akan ditabulasikan, maka mungkin perlu diimputasi.
+
+
+```{r}
+#Bridging variabel bahan baku dan produksi
+stpim23_tpt_bridge <- stpim23_tpt |>
+  mutate(
+    total_baku = rowSums(across(c(r302a_1, r302b_1)), na.rm = TRUE),  # Total bahan baku
+    r501k7_sum = rowSums(cbind(r302a_1 * r302a_2 / 100, r302b_1 * r302b_2 / 100), na.rm = TRUE), # Bahan baku impor
+    r501k5_sum = total_baku - r501k7_sum,  # Total bahan baku dalam negeri
+    r503k6_sum = r401a # Total nilai produksi
+  )
+
+```
+
+Bridging variabel STPIM ke SKIM, a.l.:
+
+- R501k5_sum Total nilai bahan baku dalam negeri
+
+- *R501k6_sum Seharusnya ga ada variabel ini*
+
+- R501k7_sum Total nilai bahan baku impor
+
+- R503k6_sum Total nilai produksi
+
+
